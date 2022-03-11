@@ -34,16 +34,10 @@ sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
 def delete_deployment():
     environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
     deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+    sch.delete_deployment(deployment)
+    sch.deactivate_environment(environments)
+    sch.delete_environment(environments)
 
-    if isinstance(deployment, SelfManagedDeployment):
-        sch.delete_deployment(deployment)
-    else:
-        print(f"Deployment {DEPLOYMENT_NAME} not found !!")
-    if isinstance(environments, SelfManagedEnvironment):
-        sch.deactivate_environment(environments)
-        sch.delete_environment(environments)
-    else:
-        print(f"Environment {ENVIRONMENT_NAME} not found !!")
     if os.path.exists("install_script.sh"):
         os.remove("install_script.sh")
 
