@@ -13,8 +13,18 @@ config = configparser.ConfigParser()
 config.read('dataops.properties')
 CRED_ID = config.get("DEFAULT", "CRED_ID")
 CRED_TOKEN = config.get("DEFAULT", "CRED_TOKEN")
-ENVIRONMENT_NAME = 'Sanjeev_Nomura_SM'
-DEPLOYMENT_NAME = 'Sanjeev_Nomura_TB'
+ENVIRONMENT_NAME = config.get("DEFAULT", "ENVIRONMENT_NAME")
+ENVIRONMENT_TYPE = config.get("DEFAULT", "ENVIRONMENT_TYPE")
+ENVIRONMENT_TAGS = config.get("DEFAULT", "ENVIRONMENT_TAGS")
+DEPLOYMENT_NAME = config.get("DEFAULT", "DEPLOYMENT_NAME")
+DEPLOYMENT_TYPE = config.get("DEFAULT", "DEPLOYMENT_TYPE")
+DEPLOYMENT_TAGS = config.get("DEFAULT", "DEPLOYMENT_TAGS")
+ENGINE_TYPE = config.get("DEFAULT", "ENGINE_TYPE")
+ENGINE_VERSION = config.get("DEFAULT", "ENGINE_VERSION")
+INSTALL_TYPE = config.get("DEFAULT", "INSTALL_TYPE")
+
+# ENVIRONMENT_NAME = 'Sanjeev_Nomura_SM'
+# DEPLOYMENT_NAME = 'Sanjeev_Nomura_TB'
 # Get environment variables
 SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
 EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
@@ -27,28 +37,28 @@ sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
 
 def create_deployment():
     # Instantiate an EnvironmentBuilder instance to build an environment, and activate it.
-    environment_builder = sch.get_environment_builder(environment_type='SELF')
+    environment_builder = sch.get_environment_builder(environment_type=ENVIRONMENT_TYPE)
     environment = environment_builder.build(environment_name=ENVIRONMENT_NAME,
-                                            environment_type='SELF',
-                                            environment_tags=['sanju'],
+                                            environment_type=ENVIRONMENT_TYPE,
+                                            environment_tags=[f'{ENVIRONMENT_TAGS}'],
                                             allow_nightly_engine_builds=False)
     # Add the environment and activate it
     sch.add_environment(environment)
     sch.activate_environment(environment)
 
     # Instantiate the DeploymentBuilder instance to build the deployment
-    deployment_builder = sch.get_deployment_builder(deployment_type='SELF')
+    deployment_builder = sch.get_deployment_builder(deployment_type=DEPLOYMENT_TYPE)
 
     # Build the deployment and specify the Sample Environment created previously.
     deployment = deployment_builder.build(deployment_name=DEPLOYMENT_NAME,
-                                          deployment_type='SELF',
+                                          deployment_type=DEPLOYMENT_TYPE,
                                           environment=environment,
-                                          engine_type='DC',
-                                          engine_version='4.4.0',
-                                          deployment_tags=['sanju'])
+                                          engine_type=ENGINE_TYPE,
+                                          engine_version=ENGINE_VERSION,
+                                          deployment_tags=[f'{DEPLOYMENT_TAGS}'])
     # Deployment type (Docker/Tarball)
     # deployment.install_type = 'DOCKER'
-    deployment.install_type = 'TARBALL'
+    deployment.install_type = INSTALL_TYPE
     deployment.engine_instances = 1
     # Add the deployment to SteamSets DataOps Platform, and start it
     sch.add_deployment(deployment)
@@ -143,8 +153,8 @@ def create_deployment():
     sdc_properties.update(new_properties)
     # override engine configs
     sdc_properties['production.maxBatchSize'] = '100000'
-    # To resolve registration issue when running engine on MacOS
     if platform == "darwin":
+        print("##### Mac Os Detected #####")
         sdc_properties['sdc.base.http.url'] = 'http://localhost:18630'
 
     properties = javaproperties.dumps(sdc_properties)
@@ -172,7 +182,9 @@ def create_deployment():
                                '-Dcom.sun.management.jmxremote.ssl=false '
 
     # TODO
+    # Fix the credential store lib issue
     # Add runtime resources
+    #
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
