@@ -147,12 +147,14 @@ def create_deployment():
     # Adding runtime properties
     new_properties = {'runtime.conf_aws_secret_group': 'all@CS',
                       'runtime.conf_mysql_tableName': 'flights',
-                      'runtime.conf_mysql_schemaName': 'sanju'
-                      # 'runtime.conf_slack_url': {SLACK_WEBHOOK}
+                      'runtime.conf_mysql_schemaName': 'sanju',
+                      'runtime.conf_mysql_jdbc_url': 'jdbc:mysql://ip-10-10-52-163.us-west-2.compute.internal:3306'
+                                                     '/sanju '
                       }
     sdc_properties.update(new_properties)
     # override engine configs
     sdc_properties['production.maxBatchSize'] = '100000'
+    sdc_properties['runtime.conf_slack_url'] = SLACK_WEBHOOK
     if platform == "darwin":
         print("##### Mac Os Detected #####")
         sdc_properties['sdc.base.http.url'] = 'http://localhost:18630'
