@@ -145,7 +145,7 @@ def create_deployment():
     sdc_properties = javaproperties.loads(
         deployment.engine_configuration.advanced_configuration.data_collector_configuration)
     # Adding runtime properties
-    new_properties = {'runtime.conf_aws_secret_group': 'all@CS',
+    new_properties = {'runtime.conf_aws_secret_group': 'all',
                       'runtime.conf_mysql_tableName': 'flights',
                       'runtime.conf_mysql_schemaName': 'sanju',
                       'runtime.conf_mysql_jdbc_url': 'jdbc:mysql://localhost:3306'
