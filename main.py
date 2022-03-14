@@ -148,7 +148,7 @@ def create_deployment():
     new_properties = {'runtime.conf_aws_secret_group': 'all@CS',
                       'runtime.conf_mysql_tableName': 'flights',
                       'runtime.conf_mysql_schemaName': 'sanju',
-                      'runtime.conf_mysql_jdbc_url': 'jdbc:mysql://ip-10-10-52-163.us-west-2.compute.internal:3306'
+                      'runtime.conf_mysql_jdbc_url': 'jdbc:mysql://localhost:3306'
                                                      '/sanju '
                       }
     sdc_properties.update(new_properties)
