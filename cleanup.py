@@ -14,12 +14,11 @@ from streamsets.sdk import ControlHub
 # sys.path.insert(1, os.path.abspath('/Users/sanjeev/SDK_4x'))
 from streamsets.sdk.sch_models import SelfManagedDeployment, SelfManagedEnvironment
 
-ENVIRONMENT_NAME = 'Sanjeev_Nomura_SM'
-DEPLOYMENT_NAME = 'Sanjeev_Nomura_TB'
-
 
 config = configparser.ConfigParser()
 config.read('dataops.properties')
+ENVIRONMENT_NAME = config.get("DEFAULT", "ENVIRONMENT_NAME")
+DEPLOYMENT_NAME = config.get("DEFAULT", "DEPLOYMENT_NAME")
 
 CRED_ID = config.get("DEFAULT", "CRED_ID")
 CRED_TOKEN = config.get("DEFAULT", "CRED_TOKEN")
@@ -35,13 +34,14 @@ def delete_deployment():
     try:
         deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
         sch.delete_deployment(deployment)
+        print(f"Deployment {DEPLOYMENT_NAME} removed")
     except:
         print(f"Deployment {DEPLOYMENT_NAME} not found !!")
     try:
         environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
         sch.deactivate_environment(environments)
         sch.delete_environment(environments)
-        print(f"Deployment {DEPLOYMENT_NAME} not found !!")
+        print(f"Environment {ENVIRONMENT_NAME} deactivated/removed !!")
     except:
         print(f"Environment {ENVIRONMENT_NAME} not found !!")
 
