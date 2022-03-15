@@ -222,10 +222,11 @@ def create_deployment():
     os.system("sh install_script.sh")
 
     with open("post_install_script.sh", "w") as f:
-        f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
-        f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
+        if not os.path.exists("./mysql-connector-java-8.0.23.tar.gz"):
+            f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
+            f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
         f.write(
-            f"mkdir $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
+            f"mkdir -p $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
             f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/\n")
         f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
                 f'$HOME/.streamsets/install/dc/streamsets-dataco'
