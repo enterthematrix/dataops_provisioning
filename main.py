@@ -22,12 +22,14 @@ DEPLOYMENT_TAGS = config.get("DEFAULT", "DEPLOYMENT_TAGS")
 ENGINE_TYPE = config.get("DEFAULT", "ENGINE_TYPE")
 ENGINE_VERSION = config.get("DEFAULT", "ENGINE_VERSION")
 INSTALL_TYPE = config.get("DEFAULT", "INSTALL_TYPE")
+SLACK_WEBHOOK = config.get("DEFAULT", "SLACK_WEBHOOK")
+EMAIL_ADDRESS = config.get("DEFAULT", "EMAIL_ADDRESS")
 
 # ENVIRONMENT_NAME = 'Sanjeev_Nomura_SM'
 # DEPLOYMENT_NAME = 'Sanjeev_Nomura_TB'
 # Get environment variables
-SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
-EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+# SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
+# EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
 
 start_time = time.time()
 warnings.simplefilter("ignore")
@@ -184,9 +186,6 @@ def create_deployment():
                                '-Dcom.sun.management.jmxremote.ssl=false '
 
     # TODO
-    # Fix the credential store lib issue
-    # Add runtime resources
-    #
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
@@ -213,18 +212,12 @@ def create_deployment():
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
 
-    # TO DO
-    # Kerberos setup / JAAS config
-
     install_script = deployment.install_script()
-    f = open("install_script.sh", "w")
-    f.write('ulimit -n 32768\n')
-    f.write(install_script)
-    # f.write('\nsource ~/.bash_profile\n')
-    f.write(
-        f'\nsudo echo $GMAIL  > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc'
-        f'/email-password.txt\n')
-    f.close()
+    with open("install_script.sh", "w") as f:
+        f.write('ulimit -n 32768\n')
+        f.write(install_script)
+        # f.write('\nsource ~/.bash_profile\n') f.write( f'\nsudo echo $GMAIL  >
+        # $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc' f'/email-password.txt\n')
     os.chmod("install_script.sh", stat.S_IRWXU)
     os.system("sh install_script.sh")
     print("Time for completion: ", (time.time() - start_time), " secs")
