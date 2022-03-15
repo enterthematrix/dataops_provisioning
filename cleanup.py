@@ -32,6 +32,7 @@ sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
 def delete_deployment():
     try:
         deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+        current_engine_version = deployment.engine_configuration.engine_version
         sch.delete_deployment(deployment)
         print(f"Deployment {DEPLOYMENT_NAME} removed")
     except:
@@ -48,6 +49,9 @@ def delete_deployment():
             os.remove("install_script.sh")
         if os.path.exists("post_install_script.sh"):
             os.remove("post_install_script.sh")
+        pid = os.system("ps aux | grep streamsets-datacollector-4.4.0 | grep DataCollectorMain | awk {'print $2'}")
+        os.system(f"kill -9 {pid}")
+
 
 
 delete_deployment()
