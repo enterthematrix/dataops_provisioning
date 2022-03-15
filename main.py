@@ -214,8 +214,7 @@ def create_deployment():
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
 
-    install_script = deployment.install_script()
-    install_script.replace("--foreground", "--background")
+    install_script = deployment.install_script().replace("--foreground", "--background")
     with open("install_script.sh", "w") as f:
         f.write('ulimit -n 32768\n')
         f.write(install_script)
@@ -227,12 +226,13 @@ def create_deployment():
         f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
         f.write(
             f"mkdir $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
-            f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/")
+            f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/\n")
         f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
                 f'$HOME/.streamsets/install/dc/streamsets-dataco'
                 f'llector-{current_engine_version}/externalResources/streamsets-libs-extras/streamsets-datacollector'
-                f'-jdbc-lib/lib/')
-        f.write(f'sudo echo {GMAIL_CRED}  >$HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
+                f'-jdbc-lib/lib/\n')
+        f.write(
+            f'sudo echo {GMAIL_CRED} > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
     os.chmod("post_install_script.sh", stat.S_IRWXU)
     os.system("sh post_install_script.sh")
 
