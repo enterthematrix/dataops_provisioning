@@ -17,7 +17,8 @@
    ENGINE_VERSION=<>
    INSTALL_TYPE=TARBALL
    SLACK_WEBHOOK=<Slack Webhook URL>
-   EMAIL_ADDRESS=<email address for notifications> ```
+   EMAIL_ADDRESS=<email address for notifications>
+   GMAIL_CRED=<for SMPT configuration> ```
 3. ```Usage: python main.py ``` create environment/deployment/engine
 4. ```Usage: python cleanup.py ``` remove environment/deployment/engine created in above steps
 
