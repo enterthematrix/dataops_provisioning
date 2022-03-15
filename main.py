@@ -3,6 +3,7 @@ import os
 import stat
 import time
 import warnings
+import wget
 from sys import platform
 import javaproperties
 # Import the ControlHub class from the SDK.
@@ -24,6 +25,9 @@ ENGINE_VERSION = config.get("DEFAULT", "ENGINE_VERSION")
 INSTALL_TYPE = config.get("DEFAULT", "INSTALL_TYPE")
 SLACK_WEBHOOK = config.get("DEFAULT", "SLACK_WEBHOOK")
 EMAIL_ADDRESS = config.get("DEFAULT", "EMAIL_ADDRESS")
+GMAIL_CRED = config.get("DEFAULT", "GMAIL_CRED")
+
+mysql_jdbc_driver_url = "https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz"
 
 # Get environment variables
 # SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
@@ -211,13 +215,27 @@ def create_deployment():
     sch.start_deployment(deployment)
 
     install_script = deployment.install_script()
+    install_script.replace("--foreground", "--background")
     with open("install_script.sh", "w") as f:
         f.write('ulimit -n 32768\n')
         f.write(install_script)
-        # f.write('\nsource ~/.bash_profile\n') f.write( f'\nsudo echo $GMAIL  >
-        # $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc' f'/email-password.txt\n')
     os.chmod("install_script.sh", stat.S_IRWXU)
     os.system("sh install_script.sh")
+
+    with open("post_install_script.sh", "w") as f:
+        f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
+        f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
+        f.write(
+            f"mkdir $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
+            f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/")
+        f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
+                f'$HOME/.streamsets/install/dc/streamsets-dataco'
+                f'llector-{current_engine_version}/externalResources/streamsets-libs-extras/streamsets-datacollector'
+                f'-jdbc-lib/lib/')
+        f.write(f'sudo echo {GMAIL_CRED}  >$HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
+    os.chmod("post_install_script.sh", stat.S_IRWXU)
+    os.system("sh post_install_script.sh")
+
     print("Time for completion: ", (time.time() - start_time), " secs")
 
 
