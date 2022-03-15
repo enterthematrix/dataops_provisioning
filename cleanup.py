@@ -14,7 +14,6 @@ from streamsets.sdk import ControlHub
 # sys.path.insert(1, os.path.abspath('/Users/sanjeev/SDK_4x'))
 from streamsets.sdk.sch_models import SelfManagedDeployment, SelfManagedEnvironment
 
-
 config = configparser.ConfigParser()
 config.read('dataops.properties')
 ENVIRONMENT_NAME = config.get("DEFAULT", "ENVIRONMENT_NAME")
@@ -47,6 +46,8 @@ def delete_deployment():
 
         if os.path.exists("install_script.sh"):
             os.remove("install_script.sh")
+        if os.path.exists("post_install_script.sh"):
+            os.remove("post_install_script.sh")
 
 
 delete_deployment()
