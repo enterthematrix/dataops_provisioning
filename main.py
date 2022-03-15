@@ -25,8 +25,6 @@ INSTALL_TYPE = config.get("DEFAULT", "INSTALL_TYPE")
 SLACK_WEBHOOK = config.get("DEFAULT", "SLACK_WEBHOOK")
 EMAIL_ADDRESS = config.get("DEFAULT", "EMAIL_ADDRESS")
 
-# ENVIRONMENT_NAME = 'Sanjeev_Nomura_SM'
-# DEPLOYMENT_NAME = 'Sanjeev_Nomura_TB'
 # Get environment variables
 # SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
 # EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
