@@ -234,6 +234,7 @@ def create_deployment():
                 f'-jdbc-lib/lib/\n')
         f.write(
             f'sudo echo {GMAIL_CRED} > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
+        f.write('echo "Finished running post install tasks"')
     os.chmod("post_install_script.sh", stat.S_IRWXU)
     os.system("sh post_install_script.sh")
 
