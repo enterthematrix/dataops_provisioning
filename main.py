@@ -249,7 +249,6 @@ def create_deployment():
     deployment_id = deployment.deployment_id
     os.system(
         f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
-
     print("Time for completion: ", (time.time() - start_time), " secs")
 
 
