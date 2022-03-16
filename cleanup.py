@@ -46,13 +46,16 @@ def delete_deployment():
     except:
         print(f"Environment {ENVIRONMENT_NAME} not found !!")
 
-    with open("cleanup_script.sh", "w") as f:
-        f.write(
-            f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
-        f.write(f"kill -9 $pid\n")
-        f.write('echo "Finished cleanup tasks"\n')
-    os.chmod("cleanup_script.sh", stat.S_IRWXU)
-    os.system("sh cleanup_script.sh")
+    try:
+        with open("cleanup_script.sh", "w") as f:
+            f.write(
+                f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
+            f.write(f"kill -9 $pid\n")
+            f.write('echo "Finished cleanup tasks"\n')
+        os.chmod("cleanup_script.sh", stat.S_IRWXU)
+        os.system("sh cleanup_script.sh")
+    except:
+        print("DataCollector not running !!")
     if os.path.exists("install_script.sh"):
         os.remove("install_script.sh")
     if os.path.exists("post_install_script.sh"):
