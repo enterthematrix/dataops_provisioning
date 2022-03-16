@@ -28,8 +28,6 @@ warnings.simplefilter("ignore")
 
 # Connect to the StreamSets DataOps Platform.
 sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
-deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
-current_engine_version = deployment.engine_configuration.engine_version
 
 
 def delete_deployment():
@@ -61,7 +59,6 @@ def delete_deployment():
         os.remove("post_install_script.sh")
     if os.path.exists("cleanup_script.sh"):
         os.remove("cleanup_script.sh")
-
 
 
 delete_deployment()
