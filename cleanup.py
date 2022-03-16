@@ -50,12 +50,11 @@ def delete_deployment():
         if os.path.exists("post_install_script.sh"):
             os.remove("post_install_script.sh")
     try:
-        pid = os.system(f"ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {'print $2'}")
+        pid = os.system(f"ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | "
+                        f"awk {'print $2'}")
         os.system(f"kill -9 {pid}")
     except:
         print(f"SDC not running !!")
-
-
 
 
 delete_deployment()
