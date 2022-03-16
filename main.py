@@ -71,6 +71,14 @@ def create_deployment():
     # retrieve deployment to make changes
     deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
     # Optional - add sample stage libs
+
+    # deployment.engine_configuration.stage_libs = [
+    #     f"aws-secrets-manager-credentialstore:{current_engine_version}",
+    #     f"basic:{current_engine_version}",
+    #     f"dataformats:{current_engine_version}",
+    #     f"dev:{current_engine_version}",
+    #     f"jdbc:{current_engine_version}"
+    # ]
     deployment.engine_configuration.stage_libs = [
         f"kinesis:{current_engine_version}",
         f"aws:{current_engine_version}",
