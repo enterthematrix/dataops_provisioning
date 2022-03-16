@@ -1,5 +1,6 @@
 import configparser
 import os
+import stat
 import warnings
 import time
 
@@ -27,6 +28,8 @@ warnings.simplefilter("ignore")
 
 # Connect to the StreamSets DataOps Platform.
 sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
+deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+current_engine_version = deployment.engine_configuration.engine_version
 
 
 def delete_deployment():
@@ -45,16 +48,20 @@ def delete_deployment():
     except:
         print(f"Environment {ENVIRONMENT_NAME} not found !!")
 
-        if os.path.exists("install_script.sh"):
-            os.remove("install_script.sh")
-        if os.path.exists("post_install_script.sh"):
-            os.remove("post_install_script.sh")
-    try:
-        pid = os.system(f"ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | "
-                        f"awk {'print $2'}")
-        os.system(f"kill -9 {pid}")
-    except:
-        print(f"SDC not running !!")
+    with open("cleanup_script.sh", "w") as f:
+        f.write(
+            f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
+        f.write(f"kill -9 $pid\n")
+        f.write('echo "Finished cleanup tasks"\n')
+    os.chmod("cleanup_script.sh", stat.S_IRWXU)
+    os.system("sh cleanup_script.sh")
+    if os.path.exists("install_script.sh"):
+        os.remove("install_script.sh")
+    if os.path.exists("post_install_script.sh"):
+        os.remove("post_install_script.sh")
+    if os.path.exists("cleanup_script.sh"):
+        os.remove("cleanup_script.sh")
+
 
 
 delete_deployment()
