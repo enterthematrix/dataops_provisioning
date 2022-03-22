@@ -2,8 +2,8 @@
 
 ### Pre-requisites
 1. [Install](https://docs.streamsets.com/platform-sdk/learn/installation.html) StreamSets SDK for Python 
-   1. Create the following configuration files:
-   credentials.properties:
+2. Create the following configuration files:
+credentials.properties:
 ```
 [DEFAULT]
 
@@ -150,8 +150,7 @@ thycotic-credentialstore
 vault-credentialstore
 wholefile-transformer
 ```
-
-4. Usage: ```python main.py  create/update/delete DataOps deployment```
+3. Usage: ```python main.py  create/update/delete DataOps deployment```
 
 
 
