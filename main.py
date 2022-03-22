@@ -3,37 +3,41 @@ import os
 import stat
 import time
 import warnings
-import wget
 from sys import platform
 import javaproperties
 # Import the ControlHub class from the SDK.
 from streamsets.sdk import ControlHub
 
+start_time = time.time()
 # sys.path.insert(1, os.path.abspath('/Users/sanjeev/SDK_4x'))
 config = configparser.ConfigParser()
-config.read('dataops.properties')
-CRED_ID = config.get("DEFAULT", "CRED_ID")
-CRED_TOKEN = config.get("DEFAULT", "CRED_TOKEN")
-ENVIRONMENT_NAME = config.get("DEFAULT", "ENVIRONMENT_NAME")
-ENVIRONMENT_TYPE = config.get("DEFAULT", "ENVIRONMENT_TYPE")
-ENVIRONMENT_TAGS = config.get("DEFAULT", "ENVIRONMENT_TAGS")
-DEPLOYMENT_NAME = config.get("DEFAULT", "DEPLOYMENT_NAME")
-DEPLOYMENT_TYPE = config.get("DEFAULT", "DEPLOYMENT_TYPE")
-DEPLOYMENT_TAGS = config.get("DEFAULT", "DEPLOYMENT_TAGS")
-ENGINE_TYPE = config.get("DEFAULT", "ENGINE_TYPE")
-ENGINE_VERSION = config.get("DEFAULT", "ENGINE_VERSION")
-INSTALL_TYPE = config.get("DEFAULT", "INSTALL_TYPE")
-SLACK_WEBHOOK = config.get("DEFAULT", "SLACK_WEBHOOK")
-EMAIL_ADDRESS = config.get("DEFAULT", "EMAIL_ADDRESS")
-GMAIL_CRED = config.get("DEFAULT", "GMAIL_CRED")
+config.optionxform = lambda option: option
+config.read('credentials.properties')
+CRED_ID = config.get("SECURITY", "CRED_ID")
+CRED_TOKEN = config.get("SECURITY", "CRED_TOKEN")
 
+config.read('deployment.conf')
+ENVIRONMENT_NAME = config.get("DEPLOYMENT", "ENVIRONMENT_NAME")
+ENVIRONMENT_TYPE = config.get("DEPLOYMENT", "ENVIRONMENT_TYPE")
+ENVIRONMENT_TAGS = config.get("DEPLOYMENT", "ENVIRONMENT_TAGS")
+DEPLOYMENT_NAME = config.get("DEPLOYMENT", "DEPLOYMENT_NAME")
+DEPLOYMENT_TYPE = config.get("DEPLOYMENT", "DEPLOYMENT_TYPE")
+DEPLOYMENT_TAGS = config.get("DEPLOYMENT", "DEPLOYMENT_TAGS")
+ENGINE_TYPE = config.get("DEPLOYMENT", "ENGINE_TYPE")
+ENGINE_VERSION = config.get("DEPLOYMENT", "ENGINE_VERSION")
+INSTALL_TYPE = config.get("DEPLOYMENT", "INSTALL_TYPE")
+ENGINE_INSTANCES = config.get("DEPLOYMENT", "ENGINE_INSTANCES")
+MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
+MIN_HEAP = config.get("DEPLOYMENT", "MIN_HEAP")
+SLACK_WEBHOOK = config.get("DEPLOYMENT", "SLACK_WEBHOOK")
+EMAIL_ADDRESS = config.get("DEPLOYMENT", "EMAIL_ADDRESS")
+
+# Download MySql JDBC driver jar for demo pipeline
 mysql_jdbc_driver_url = "https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz"
 
 # Get environment variables
-# SLACK_WEBHOOK = os.getenv('SLACK_WEBHOOK')
-# EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+GMAIL_CRED = os.environ.get('GMAIL_CRED')
 
-start_time = time.time()
 warnings.simplefilter("ignore")
 # Connect to the StreamSets DataOps Platform.
 sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
@@ -63,110 +67,50 @@ def create_deployment():
     # Deployment type (Docker/Tarball)
     # deployment.install_type = 'DOCKER'
     deployment.install_type = INSTALL_TYPE
-    deployment.engine_instances = 1
+    deployment.engine_instances = ENGINE_INSTANCES
     # Add the deployment to SteamSets DataOps Platform, and start it
     sch.add_deployment(deployment)
     # deployment must be added before retrieving engine_version
     current_engine_version = deployment.engine_configuration.engine_version
     # retrieve deployment to make changes
     deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
-    # Optional - add sample stage libs
 
-    # deployment.engine_configuration.stage_libs = [
-    #     f"aws-secrets-manager-credentialstore:{current_engine_version}",
-    #     f"basic:{current_engine_version}",
-    #     f"dataformats:{current_engine_version}",
-    #     f"dev:{current_engine_version}",
-    #     f"jdbc:{current_engine_version}"
-    # ]
-    deployment.engine_configuration.stage_libs = [
-        f"kinesis:{current_engine_version}",
-        f"aws:{current_engine_version}",
-        f"apache-kafka_1_0:{current_engine_version}",
-        f"apache-kafka_1_1:{current_engine_version}",
-        f"apache-kafka_2_0:{current_engine_version}",
-        f"apache-kafka_2_1:{current_engine_version}",
-        f"apache-kafka_2_2:{current_engine_version}",
-        f"apache-kafka_2_3:{current_engine_version}",
-        f"apache-kafka_2_4:{current_engine_version}",
-        f"apache-kafka_2_5:{current_engine_version}",
-        f"apache-kafka_2_6:{current_engine_version}",
-        f"apache-kafka_2_7:{current_engine_version}",
-        f"apache-kafka_2_8:{current_engine_version}",
-        f"apache-pulsar_2:{current_engine_version}",
-        f"apache-solr_6_1_0:{current_engine_version}",
-        f"aws-secrets-manager-credentialstore:{current_engine_version}",
-        f"azure-keyvault-credentialstore:{current_engine_version}",
-        f"azure:{current_engine_version}",
-        f"basic:{current_engine_version}",
-        f"cassandra_3:{current_engine_version}",
-        f"cdp_7_1:{current_engine_version}",
-        f"couchbase_5:{current_engine_version}",
-        f"crypto:{current_engine_version}",
-        f"cyberark-credentialstore:{current_engine_version}",
-        f"dataformats:{current_engine_version}",
-        f"dev:{current_engine_version}",
-        f"elasticsearch_5:{current_engine_version}",
-        f"elasticsearch_6:{current_engine_version}",
-        f"elasticsearch_7:{current_engine_version}",
-        f"emr_hadoop_2_8_3:{current_engine_version}",
-        f"bigtable:{current_engine_version}",
-        f"google-cloud:{current_engine_version}",
-        f"google-secret-manager-credentialstore:{current_engine_version}",
-        f"groovy_2_4:{current_engine_version}",
-        f"influxdb_0_9:{current_engine_version}",
-        f"influxdb_2_0:{current_engine_version}",
-        f"jks-credentialstore:{current_engine_version}",
-        f"jdbc-sap-hana:{current_engine_version}",
-        f"jdbc:{current_engine_version}",
-        f"jms:{current_engine_version}",
-        f"jython_2_7:{current_engine_version}",
-        f"kinetica_6_0:{current_engine_version}",
-        f"kinetica_6_1:{current_engine_version}",
-        f"kinetica_6_2:{current_engine_version}",
-        f"kinetica_7_0:{current_engine_version}",
-        f"mapr_6_1-mep6:{current_engine_version}",
-        f"mapr_6_1:{current_engine_version}",
-        f"mleap:{current_engine_version}",
-        f"mongodb_4:{current_engine_version}",
-        f"mongodb_3:{current_engine_version}",
-        f"mysql-binlog:{current_engine_version}",
-        f"omniture:{current_engine_version}",
-        f"orchestrator:{current_engine_version}",
-        f"rabbitmq:{current_engine_version}",
-        f"redis:{current_engine_version}",
-        f"salesforce:{current_engine_version}",
-        f"tensorflow:{current_engine_version}",
-        f"thycotic-credentialstore:{current_engine_version}",
-        f"vault-credentialstore:{current_engine_version}",
-        f"wholefile-transformer:{current_engine_version}",
-        f"azure-synapse:1.1.0",
-        f"collibra:1.0.0",
-        f"databricks:1.5.0",
-        f"google:1.0.0",
-        f"greenplum:1.0.0",
-        f"memsql:1.0.1",
-        f"oracle:1.3.0",
-        f"dataprotector:1.9.0",
-        f"snowflake:1.9.0",
-        f"sql-server-bdc:1.0.1",
-        f"teradata:1.0.1"
-    ]
-    # print(deployment.engine_configuration._data['stageLibs'])
+    # Fewer stage libs for quick deployment
+    with open('partial_stage_libs.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            deployment.engine_configuration.stage_libs.append(rec.rstrip())
+    deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+                                                  deployment.engine_configuration.stage_libs]
+
+    # # Full list of stage libs for complete deployment with all stages
+    # with open('stage_libs.conf', 'r') as f:
+    #     for rec in f:
+    #         if rec.startswith('#'): continue
+    #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
+    # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+    #                                               deployment.engine_configuration.stage_libs]
+
+    # get list of enterprise libs
+    with open('enterprise_libs.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            deployment.engine_configuration.stage_libs.append(rec.rstrip())
+
     # retrieve deployment configs
     sdc_properties = javaproperties.loads(
         deployment.engine_configuration.advanced_configuration.data_collector_configuration)
-    # Adding runtime properties
-    new_properties = {'runtime.conf_aws_secret_group': 'all',
-                      'runtime.conf_mysql_tableName': 'flights',
-                      'runtime.conf_mysql_schemaName': 'sanju',
-                      'runtime.conf_mysql_jdbc_url': 'jdbc:mysql://localhost:3306'
-                                                     '/sanju '
-                      }
-    sdc_properties.update(new_properties)
-    # override engine configs
-    sdc_properties['production.maxBatchSize'] = '100000'
-    sdc_properties['runtime.conf_slack_url'] = SLACK_WEBHOOK
+
+    # read SDC properties
+    for key in config['SDC_PROPERTIES']:
+        sdc_properties[key] = config['SDC_PROPERTIES'][key]
+
+    # read runtime resources
+    for key in config['RUNTIME_RESOURCES']:
+        sdc_properties[key] = config['RUNTIME_RESOURCES'][key]
+
     if platform == "darwin":
         print("##### Mac Os Detected #####")
         sdc_properties['sdc.base.http.url'] = 'http://localhost:18630'
@@ -178,43 +122,27 @@ def create_deployment():
     # print(javaproperties.loads(deployment.engine_configuration.advanced_configuration.data_collector_configuration)[
     #           'production.maxBatchSize'])
 
-    # Update install type
-    # expected_install_type = 'DOCKER'
-    # deployment.install_type = expected_install_type
-
     # Update external_resource_location
     expected_external_resource_location = '/var/resources/externalResources.tgz'
     deployment.engine_configuration.external_resource_location = expected_external_resource_location
 
-    # Update java configurations
+    # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
-    java_config.maximum_java_heap_size_in_mb = 4096
-    java_config.minimum_java_heap_size_in_mb = 2048
-    java_config.java_options = '-Xdebug -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=3333 ' \
-                               '-Dcom.sun.management.jmxremote.local.only=false ' \
-                               '-Dcom.sun.management.jmxremote.authenticate=false ' \
-                               '-Dcom.sun.management.jmxremote.ssl=false '
-
-    # TODO
+    java_config.maximum_java_heap_size_in_mb = MAX_HEAP
+    java_config.minimum_java_heap_size_in_mb = MIN_HEAP
+    with open('java_options.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            java_config.java_options = f"{java_config.java_options} {rec.rstrip()}"
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
-    cred_properties['credentialStores'] = 'aws'
-    cred_properties['credentialStore.aws.config.region'] = 'us-west-2'  # AWS Region
-    cred_properties['credentialStore.aws.config.security.method'] = 'instanceProfile'  # accessKeys or instanceProfile
+    config.read('deployment.conf')
+    for key in config['CRED_STORE']:
+        cred_properties[key] = config['CRED_STORE'][key]
     cred_properties = javaproperties.dumps(cred_properties)
     deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
-
-    # configure SMTP
-    sdc_properties = javaproperties.loads(
-        deployment.engine_configuration.advanced_configuration.data_collector_configuration)
-    sdc_properties['mail.smtp.host'] = 'smtp.gmail.com'
-    sdc_properties['mail.smtp.port'] = '587'
-    sdc_properties['mail.smtp.auth'] = 'true'
-    sdc_properties['mail.smtp.starttls.enable'] = 'true'
-    sdc_properties['mail.smtps.auth'] = 'true'
-    sdc_properties['xmail.username'] = EMAIL_ADDRESS
-    sdc_properties['xmail.from.address'] = EMAIL_ADDRESS
 
     properties = javaproperties.dumps(sdc_properties)
     deployment.engine_configuration.advanced_configuration.data_collector_configuration = properties
@@ -249,27 +177,135 @@ def create_deployment():
     deployment_id = deployment.deployment_id
     os.system(
         f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
-    print("Time for completion: ", (time.time() - start_time), " secs")
+
+
+def delete_deployment():
+    try:
+        deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+        current_engine_version = deployment.engine_configuration.engine_version
+        sch.delete_deployment(deployment)
+        print(f"Deployment {DEPLOYMENT_NAME} removed")
+    except:
+        print(f"Deployment {DEPLOYMENT_NAME} not found !!")
+    try:
+        environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
+        sch.deactivate_environment(environments)
+        sch.delete_environment(environments)
+        print(f"Environment {ENVIRONMENT_NAME} deactivated/removed !!")
+    except:
+        print(f"Environment {ENVIRONMENT_NAME} not found !!")
+
+    try:
+        with open("cleanup_script.sh", "w") as f:
+            f.write(
+                f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
+            f.write(f"kill -9 $pid\n")
+            f.write('echo "Finished cleanup tasks"\n')
+        os.chmod("cleanup_script.sh", stat.S_IRWXU)
+        os.system("sh cleanup_script.sh")
+    except:
+        print("DataCollector not running !!")
+    if os.path.exists("install_script.sh"):
+        os.remove("install_script.sh")
+    if os.path.exists("post_install_script.sh"):
+        os.remove("post_install_script.sh")
+    if os.path.exists("cleanup_script.sh"):
+        os.remove("cleanup_script.sh")
 
 
 def update_deployment():
     deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
-    # Update deployment name and tag/s
-    deployment.deployment_name = 'Sanjeev_Nomura_SelfManaged'
-    deployment.tags = deployment.tags + ['nomura']
-
-    # Update stage libraries
-    stage_libraries = deployment.engine_configuration.select_stage_libraries
     current_engine_version = deployment.engine_configuration.engine_version
-    if deployment.engine_configuration.engine_type == 'DC':
-        additional_stage_libs = [f'streamsets-datacollector-jython_2_7-lib:{current_engine_version}',
-                                 f'streamsets-datacollector-jdbc-lib:{current_engine_version}']
+    # Update deployment name and tag/s
+    deployment.deployment_name = DEPLOYMENT_NAME
+    deployment.tags = [DEPLOYMENT_TAGS]
 
-    stage_libraries.extend(additional_stage_libs)
+    # Fewer stage libs for quick deployment
+    deployment.engine_configuration.stage_libs = []
+    with open('partial_stage_libs.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            deployment.engine_configuration.stage_libs.append(rec.rstrip())
+    deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+                                                  deployment.engine_configuration.stage_libs]
 
+    # # Full list of stage libs for complete deployment with all stages
+    # with open('stage_libs.conf', 'r') as f:
+    #     for rec in f:
+    #         if rec.startswith('#'): continue
+    #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
+    # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+    #                                               deployment.engine_configuration.stage_libs]
+
+    # get list of enterprise libs
+    with open('enterprise_libs.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            deployment.engine_configuration.stage_libs.append(rec.rstrip())
+
+    # retrieve deployment configs
+    sdc_properties = javaproperties.loads(
+        deployment.engine_configuration.advanced_configuration.data_collector_configuration)
+
+    # read SDC properties
+    for key in config['SDC_PROPERTIES']:
+        sdc_properties[key] = config['SDC_PROPERTIES'][key]
+
+    # read runtime resources
+    for key in config['RUNTIME_RESOURCES']:
+        sdc_properties[key] = config['RUNTIME_RESOURCES'][key]
+
+    properties = javaproperties.dumps(sdc_properties)
+    deployment.engine_configuration.advanced_configuration.data_collector_configuration = properties
+
+    # Update JAVA OPTIONS
+    java_config = deployment.engine_configuration.java_configuration
+    java_config.jvmMinMemory = MIN_HEAP
+    java_config.jvmMaxMemory = MAX_HEAP
+    java_options = ""
+    with open('java_options.conf', 'r') as f:
+        for rec in f:
+            if rec.startswith('#'):
+                continue
+            java_options = f"{java_options} {rec.rstrip()}"
+        java_config.java_options = java_options
+
+    # configure aws credential store
+    cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
+    config.read('deployment.conf')
+    for key in config['CRED_STORE']:
+        cred_properties[key] = config['CRED_STORE'][key]
+    cred_properties = javaproperties.dumps(cred_properties)
+    deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
+
+    properties = javaproperties.dumps(sdc_properties)
+    deployment.engine_configuration.advanced_configuration.data_collector_configuration = properties
+    # persist changes to the deployment
     sch.update_deployment(deployment)
     sch.stop_deployment(deployment)
     sch.start_deployment(deployment)
+    # restart engine after updating the deployment
+    deployment_id = deployment.deployment_id
+    os.system(
+        f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
 
 
-create_deployment()
+if sch.deployments.contains(deployment_name=DEPLOYMENT_NAME):
+    print(f"Deployment {DEPLOYMENT_NAME} already exists")
+    while True:
+        user_choice = input("Available Options:[delete/update/exit]: ")
+        if user_choice in ['delete', 'update', 'exit']:
+            break
+    if user_choice == "delete":
+        print(f"Deployment {DEPLOYMENT_NAME} will be deleted !!")
+        delete_deployment()
+    elif user_choice == "update":
+        print(f"Deployment {DEPLOYMENT_NAME} will be updated !!")
+        update_deployment()
+    else:
+        print(f"Goodbye !!")
+else:
+    create_deployment()
+print("Time for completion: ", (time.time() - start_time), " secs")
