@@ -128,6 +128,7 @@ def create_deployment():
 
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
+    java_config.java_memory_strategy = 'ABSOLUTE'
     java_config.maximum_java_heap_size_in_mb = MAX_HEAP
     java_config.minimum_java_heap_size_in_mb = MIN_HEAP
     with open('java_options.conf', 'r') as f:
@@ -262,8 +263,9 @@ def update_deployment():
 
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
-    java_config.jvmMinMemory = MIN_HEAP
-    java_config.jvmMaxMemory = MAX_HEAP
+    java_config.java_memory_strategy = 'ABSOLUTE'
+    java_config.maximum_java_heap_size_in_mb = MIN_HEAP
+    java_config.minimum_java_heap_size_in_mb = MAX_HEAP
     java_options = ""
     with open('java_options.conf', 'r') as f:
         for rec in f:
