@@ -3,6 +3,7 @@
 ### Pre-requisites
 1. [Install](https://docs.streamsets.com/platform-sdk/learn/installation.html) StreamSets SDK for Python 
 2. Create the following configuration files:
+
 credentials.properties:
 ```
 [DEFAULT]
@@ -62,9 +63,7 @@ java_options.conf:
 -Dcom.sun.management.jmxremote.authenticate=false
 -Dcom.sun.management.jmxremote.ssl=false
 ```
-credentials.properties:
-```
-```
+
 enterprise_libs.conf:
 ```
 azure-synapse:1.1.0
