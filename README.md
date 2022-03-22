@@ -58,7 +58,7 @@ credentialStore.aws.config.security.method=_optional_
 java_options.conf:
 ```
 -Xdebug
--Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=4444
+-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=<jmx.port>
 -Dcom.sun.management.jmxremote.local.only=false
 -Dcom.sun.management.jmxremote.authenticate=false
 -Dcom.sun.management.jmxremote.ssl=false
@@ -149,7 +149,7 @@ thycotic-credentialstore
 vault-credentialstore
 wholefile-transformer
 ```
-3. Usage: ```python main.py  create/update/delete DataOps deployment```
+3. Usage: ```python main.py  ``` to create/update/delete DataOps deployment
 
 
 
