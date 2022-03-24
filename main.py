@@ -15,6 +15,7 @@ config.optionxform = lambda option: option
 config.read('credentials.properties')
 CRED_ID = config.get("SECURITY", "CRED_ID")
 CRED_TOKEN = config.get("SECURITY", "CRED_TOKEN")
+SLACK_WEBHOOK = config.get("SECURITY", "SLACK_WEBHOOK")
 
 config.read('deployment.conf')
 ENVIRONMENT_NAME = config.get("DEPLOYMENT", "ENVIRONMENT_NAME")
@@ -29,7 +30,6 @@ INSTALL_TYPE = config.get("DEPLOYMENT", "INSTALL_TYPE")
 ENGINE_INSTANCES = config.get("DEPLOYMENT", "ENGINE_INSTANCES")
 MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
 MIN_HEAP = config.get("DEPLOYMENT", "MIN_HEAP")
-SLACK_WEBHOOK = config.get("DEPLOYMENT", "SLACK_WEBHOOK")
 EMAIL_ADDRESS = config.get("DEPLOYMENT", "EMAIL_ADDRESS")
 
 # Download MySql JDBC driver jar for demo pipeline
