@@ -152,8 +152,14 @@ def create_deployment():
     sch.start_deployment(deployment)
 
     install_script = deployment.install_script().replace("--foreground", "--background")
+    # defaults the download & install location
+    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
+                     f"--install-dir=$HOME/.streamsets/install/dc "
     with open("install_script.sh", "w") as f:
         f.write('ulimit -n 32768\n')
+        # if there's a requirement to pass in some java options during bootstrapping, set those via
+        # STREAMSETS_BOOTSTRAP_JAVA_OPTS. f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<>
+        # -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
         f.write(install_script)
     os.chmod("install_script.sh", stat.S_IRWXU)
     os.system("sh install_script.sh")
@@ -182,6 +188,7 @@ def create_deployment():
 
 def delete_deployment():
     try:
+        # for simplification getting deployment by name, in practice we MUST use deployment ID
         deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
         current_engine_version = deployment.engine_configuration.engine_version
         sch.delete_deployment(deployment)
@@ -189,6 +196,7 @@ def delete_deployment():
     except:
         print(f"Deployment {DEPLOYMENT_NAME} not found !!")
     try:
+        # for simplification getting environment by name, in practice we MUST use environment ID
         environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
         sch.deactivate_environment(environments)
         sch.delete_environment(environments)
@@ -263,6 +271,7 @@ def update_deployment():
 
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
+    # default is PERCENTAGE
     java_config.java_memory_strategy = 'ABSOLUTE'
     java_config.maximum_java_heap_size_in_mb = MIN_HEAP
     java_config.minimum_java_heap_size_in_mb = MAX_HEAP
