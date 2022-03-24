@@ -157,9 +157,8 @@ def create_deployment():
                      f"--install-dir=$HOME/.streamsets/install/dc "
     with open("install_script.sh", "w") as f:
         f.write('ulimit -n 32768\n')
-        # if there's a requirement to pass in some java options during bootstrapping, set those via
-        # STREAMSETS_BOOTSTRAP_JAVA_OPTS. f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<>
-        # -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
+        # if there's a requirement to pass in some java options during bootstrapping, set those via STREAMSETS_BOOTSTRAP_JAVA_OPTS.
+        # f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<> -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
         f.write(install_script)
     os.chmod("install_script.sh", stat.S_IRWXU)
     os.system("sh install_script.sh")
@@ -196,7 +195,7 @@ def delete_deployment():
     except:
         print(f"Deployment {DEPLOYMENT_NAME} not found !!")
     try:
-        # for simplification getting environment by name, in practice we MUST use environment ID
+        # for simplification getting environment by name, in practice we MUST use environmentcd  ID
         environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
         sch.deactivate_environment(environments)
         sch.delete_environment(environments)
