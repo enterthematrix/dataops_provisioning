@@ -1,3 +1,7 @@
+# Custom
+.idea/
+*.properties
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -26,7 +30,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-*.properties
+
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
