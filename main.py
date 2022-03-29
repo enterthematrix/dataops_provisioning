@@ -152,11 +152,14 @@ def create_deployment():
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
     if INSTALL_TYPE == "DOCKER":
+        # engine version string to include in docker container name
         engine_version = current_engine_version.replace(".", "")
+        # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
         install_script = deployment.install_script().replace("docker run",
                                                              f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
         with open("install_script.sh", "w") as f:
             f.write(install_script)
+        # Download the MySql JDBC driver if not present under $HOME/JDBC
         with open("pre_install_script.sh", "w") as f:
             if not os.path.exists("$HOME/JDBC/mysql-connector-java-8.0.23.tar.gz"):
                 f.write(
@@ -181,7 +184,7 @@ def create_deployment():
             f.write(install_script)
         os.chmod("install_script.sh", stat.S_IRWXU)
         os.system("sh install_script.sh")
-
+        # Download/install the MySql JDBC driver if not present
         with open("post_install_script.sh", "w") as f:
             if not os.path.exists("./mysql-connector-java-8.0.23.tar.gz"):
                 f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
@@ -242,6 +245,8 @@ def delete_deployment():
         os.remove("install_script.sh")
     if os.path.exists("post_install_script.sh"):
         os.remove("post_install_script.sh")
+    if os.path.exists("pre_install_script.sh"):
+        os.remove("pre_install_script.sh")
     if os.path.exists("cleanup_script.sh"):
         os.remove("cleanup_script.sh")
 
