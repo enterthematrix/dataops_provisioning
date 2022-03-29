@@ -31,6 +31,7 @@ ENGINE_INSTANCES = config.get("DEPLOYMENT", "ENGINE_INSTANCES")
 MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
 MIN_HEAP = config.get("DEPLOYMENT", "MIN_HEAP")
 EMAIL_ADDRESS = config.get("DEPLOYMENT", "EMAIL_ADDRESS")
+DOCKER_NETWORK = config.get("DEPLOYMENT", "DOCKER_NETWORK")
 
 # Download MySql JDBC driver jar for demo pipeline
 mysql_jdbc_driver_url = "https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz"
@@ -150,39 +151,57 @@ def create_deployment():
     # persist changes to the deployment
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
+    if INSTALL_TYPE == "DOCKER":
+        engine_version = current_engine_version.replace(".", "")
+        install_script = deployment.install_script().replace("docker run",
+                                                             f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+        with open("install_script.sh", "w") as f:
+            f.write(install_script)
+        with open("pre_install_script.sh", "w") as f:
+            if not os.path.exists("$HOME/JDBC/mysql-connector-java-8.0.23.tar.gz"):
+                f.write(
+                    'wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz -P $HOME/JDBC/\n')
+                f.write('tar -xf $HOME/JDBC/mysql-connector-java-8.0.23.tar.gz -C $HOME/JDBC/\n')
+                f.write('mv $HOME/JDBC/mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar $HOME/JDBC/\n')
+                f.write('echo "Finished running pre install tasks"')
+        with open("install_script.sh", "w") as f:
+            f.write('docker network create cluster\n')
+            f.write(install_script)
+        os.chmod("install_script.sh", stat.S_IRWXU)
+        os.system("sh install_script.sh")
+    if INSTALL_TYPE == "TARBALL":
+        install_script = deployment.install_script().replace("--foreground", "--background")
+        # defaults the download & install location
+        install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
+                         f"--install-dir=$HOME/.streamsets/install/dc "
+        with open("install_script.sh", "w") as f:
+            f.write('ulimit -n 32768\n')
+            # if there's a requirement to pass in some java options during bootstrapping, set those via STREAMSETS_BOOTSTRAP_JAVA_OPTS.
+            # f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<> -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
+            f.write(install_script)
+        os.chmod("install_script.sh", stat.S_IRWXU)
+        os.system("sh install_script.sh")
 
-    install_script = deployment.install_script().replace("--foreground", "--background")
-    # defaults the download & install location
-    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
-                     f"--install-dir=$HOME/.streamsets/install/dc "
-    with open("install_script.sh", "w") as f:
-        f.write('ulimit -n 32768\n')
-        # if there's a requirement to pass in some java options during bootstrapping, set those via STREAMSETS_BOOTSTRAP_JAVA_OPTS.
-        # f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<> -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
-        f.write(install_script)
-    os.chmod("install_script.sh", stat.S_IRWXU)
-    os.system("sh install_script.sh")
-
-    with open("post_install_script.sh", "w") as f:
-        if not os.path.exists("./mysql-connector-java-8.0.23.tar.gz"):
-            f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
-            f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
-        f.write(
-            f"mkdir -p $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
-            f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/\n")
-        f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
-                f'$HOME/.streamsets/install/dc/streamsets-dataco'
-                f'llector-{current_engine_version}/externalResources/streamsets-libs-extras/streamsets-datacollector'
-                f'-jdbc-lib/lib/\n')
-        f.write(
-            f'sudo echo {GMAIL_CRED} > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
-        f.write('echo "Finished running post install tasks"')
-    os.chmod("post_install_script.sh", stat.S_IRWXU)
-    os.system("sh post_install_script.sh")
-    # restart engine after installing JDBC driver jar
-    deployment_id = deployment.deployment_id
-    os.system(
-        f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
+        with open("post_install_script.sh", "w") as f:
+            if not os.path.exists("./mysql-connector-java-8.0.23.tar.gz"):
+                f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
+                f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
+            f.write(
+                f"mkdir -p $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
+                f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/\n")
+            f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
+                    f'$HOME/.streamsets/install/dc/streamsets-dataco'
+                    f'llector-{current_engine_version}/externalResources/streamsets-libs-extras/streamsets-datacollector'
+                    f'-jdbc-lib/lib/\n')
+            f.write(
+                f'sudo echo {GMAIL_CRED} > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
+            f.write('echo "Finished running post install tasks"')
+        os.chmod("post_install_script.sh", stat.S_IRWXU)
+        os.system("sh post_install_script.sh")
+        # restart engine after installing JDBC driver jar
+        deployment_id = deployment.deployment_id
+        os.system(
+            f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
 
 
 def delete_deployment():
@@ -190,6 +209,7 @@ def delete_deployment():
         # for simplification getting deployment by name, in practice we MUST use deployment ID
         deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
         current_engine_version = deployment.engine_configuration.engine_version
+        engine_version = current_engine_version.replace(".", "")
         sch.delete_deployment(deployment)
         print(f"Deployment {DEPLOYMENT_NAME} removed")
     except:
@@ -204,11 +224,16 @@ def delete_deployment():
         print(f"Environment {ENVIRONMENT_NAME} not found !!")
 
     try:
-        with open("cleanup_script.sh", "w") as f:
-            f.write(
-                f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
-            f.write(f"kill -9 $pid\n")
-            f.write('echo "Finished cleanup tasks"\n')
+        if INSTALL_TYPE == "TARBALL":
+            with open("cleanup_script.sh", "w") as f:
+                f.write(
+                    f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
+                f.write(f"kill -9 $pid\n")
+                f.write('echo "Finished cleanup tasks"\n')
+        if INSTALL_TYPE == "DOCKER":
+            with open("cleanup_script.sh", "w") as f:
+                f.write(f"docker rm -f sdc-{engine_version}\n")
+                f.write('echo "Finished cleanup tasks"\n')
         os.chmod("cleanup_script.sh", stat.S_IRWXU)
         os.system("sh cleanup_script.sh")
     except:
@@ -315,7 +340,7 @@ if sch.deployments.contains(deployment_name=DEPLOYMENT_NAME):
         print(f"Deployment {DEPLOYMENT_NAME} will be updated !!")
         update_deployment()
     else:
-        print(f"Goodbye !!")
+        print("Goodbye !!")
 else:
     create_deployment()
 print("Time for completion: ", (time.time() - start_time), " secs")
