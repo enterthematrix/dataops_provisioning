@@ -155,7 +155,7 @@ def create_deployment():
     if INSTALL_TYPE == "DOCKER":
         # engine version string to include in docker container name
         if 'http.port' in config['SDC_PROPERTIES']:
-            engine_version = config['SDC_PROPERTIES']['http.port'][2:]
+            engine_version = config['SDC_PROPERTIES']['http.port']
         else:
             engine_version = current_engine_version.replace(".", "")
 
