@@ -227,7 +227,10 @@ def delete_deployment():
         # for simplification getting deployment by name, in practice we MUST use deployment ID
         deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
         current_engine_version = deployment.engine_configuration.engine_version
-        engine_version = current_engine_version.replace(".", "")
+        if 'http.port' in config['SDC_PROPERTIES']:
+            engine_version = config['SDC_PROPERTIES']['http.port']
+        else:
+            engine_version = current_engine_version.replace(".", "")
         sch.delete_deployment(deployment)
         print(f"Deployment {DEPLOYMENT_NAME} removed")
     except:
