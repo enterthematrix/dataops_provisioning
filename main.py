@@ -32,6 +32,7 @@ MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
 MIN_HEAP = config.get("DEPLOYMENT", "MIN_HEAP")
 EMAIL_ADDRESS = config.get("DEPLOYMENT", "EMAIL_ADDRESS")
 DOCKER_NETWORK = config.get("DEPLOYMENT", "DOCKER_NETWORK")
+DOCKER_PORTS = config.get("DEPLOYMENT", "DOCKER_PORTS")
 
 # Download MySql JDBC driver jar for demo pipeline
 mysql_jdbc_driver_url = "https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz"
@@ -154,9 +155,19 @@ def create_deployment():
     if INSTALL_TYPE == "DOCKER":
         # engine version string to include in docker container name
         engine_version = current_engine_version.replace(".", "")
-        # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
-        install_script = deployment.install_script().replace("docker run",
-                                                             f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+        ports_list = DOCKER_PORTS.split(",")
+        ports_list = [f"-p {port}:{port}" for port in ports_list]
+        ports_string = ' '.join(str(port) for port in ports_list)
+        if not ports_list:
+            # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
+            install_script = deployment.install_script().replace("docker run",
+                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+        else:
+            # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
+            # expose some Docker ports
+            install_script = deployment.install_script().replace("docker run",
+                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} {ports_string} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+
         with open("install_script.sh", "w") as f:
             f.write(install_script)
         # Download the MySql JDBC driver if not present under $HOME/JDBC
