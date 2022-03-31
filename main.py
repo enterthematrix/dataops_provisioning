@@ -26,6 +26,7 @@ DEPLOYMENT_TYPE = config.get("DEPLOYMENT", "DEPLOYMENT_TYPE")
 DEPLOYMENT_TAGS = config.get("DEPLOYMENT", "DEPLOYMENT_TAGS")
 ENGINE_TYPE = config.get("DEPLOYMENT", "ENGINE_TYPE")
 ENGINE_VERSION = config.get("DEPLOYMENT", "ENGINE_VERSION")
+ENGINE_LABELS = config.get("DEPLOYMENT", "ENGINE_LABELS")
 INSTALL_TYPE = config.get("DEPLOYMENT", "INSTALL_TYPE")
 ENGINE_INSTANCES = config.get("DEPLOYMENT", "ENGINE_INSTANCES")
 MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
@@ -66,6 +67,12 @@ def create_deployment():
                                           engine_type=ENGINE_TYPE,
                                           engine_version=ENGINE_VERSION,
                                           deployment_tags=[f'{DEPLOYMENT_TAGS}'])
+    # save id's for delete
+    config.set('DEPLOYMENT', 'DEPLOYMENT_ID', str(deployment.deployment_id))
+    config.set('DEPLOYMENT', 'ENVIRONMENT_ID', str(environment.environment_id))
+    # Set engine labels
+    labels = ENGINE_LABELS.split(",")
+    deployment.engine_configuration.engine_labels = labels
     # Deployment type (Docker/Tarball)
     # deployment.install_type = 'DOCKER'
     deployment.install_type = INSTALL_TYPE
@@ -224,8 +231,12 @@ def create_deployment():
 
 def delete_deployment():
     try:
-        # for simplification getting deployment by name, in practice we MUST use deployment ID
-        deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+        config.read('deployment.conf')
+        # retrieve id's from the deployment.conf
+        environment_id = config.get("DEPLOYMENT", "ENVIRONMENT_ID")
+        deployment_id = config.get("DEPLOYMENT", "DEPLOYMENT_ID")
+
+        deployment = sch.deployments.get(deployment_id=deployment_id)
         current_engine_version = deployment.engine_configuration.engine_version
         if 'http.port' in config['SDC_PROPERTIES']:
             engine_version = config['SDC_PROPERTIES']['http.port']
@@ -236,10 +247,9 @@ def delete_deployment():
     except:
         print(f"Deployment {DEPLOYMENT_NAME} not found !!")
     try:
-        # for simplification getting environment by name, in practice we MUST use environmentcd  ID
-        environments = sch.environments.get(environment_name=ENVIRONMENT_NAME)
-        sch.deactivate_environment(environments)
-        sch.delete_environment(environments)
+        environment = sch.environments.get(environment_id=environment_id)
+        sch.deactivate_environment(environment)
+        sch.delete_environment(environment)
         print(f"Environment {ENVIRONMENT_NAME} deactivated/removed !!")
     except:
         print(f"Environment {ENVIRONMENT_NAME} not found !!")
@@ -275,6 +285,9 @@ def update_deployment():
     # Update deployment name and tag/s
     deployment.deployment_name = DEPLOYMENT_NAME
     deployment.tags = [DEPLOYMENT_TAGS]
+    # Update engine labels
+    labels = ENGINE_LABELS.split(",")
+    deployment.engine_configuration.engine_labels = labels
 
     # Fewer stage libs for quick deployment
     deployment.engine_configuration.stage_libs = []
