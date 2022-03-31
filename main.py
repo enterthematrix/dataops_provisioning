@@ -154,7 +154,11 @@ def create_deployment():
     sch.start_deployment(deployment)
     if INSTALL_TYPE == "DOCKER":
         # engine version string to include in docker container name
-        engine_version = current_engine_version.replace(".", "")
+        if 'http.port' in config['SDC_PROPERTIES']:
+            engine_version = config['SDC_PROPERTIES']['http.port'][2:]
+        else:
+            engine_version = current_engine_version.replace(".", "")
+
         ports_list = DOCKER_PORTS.split(",")
         ports_list = [f"-p {port}:{port}" for port in ports_list]
         ports_string = ' '.join(str(port) for port in ports_list)
