@@ -28,6 +28,8 @@ ENGINE_TYPE = config.get("DEPLOYMENT", "ENGINE_TYPE")
 ENGINE_VERSION = config.get("DEPLOYMENT", "ENGINE_VERSION")
 ENGINE_LABELS = config.get("DEPLOYMENT", "ENGINE_LABELS")
 INSTALL_TYPE = config.get("DEPLOYMENT", "INSTALL_TYPE")
+EXTERNAL_RESOURCES_PATH_DOCKER = config.get("DEPLOYMENT", "EXTERNAL_RESOURCES_PATH_DOCKER")
+EXTERNAL_RESOURCES_PATH_TARBALL = config.get("DEPLOYMENT", "EXTERNAL_RESOURCES_PATH_TARBALL")
 ENGINE_INSTANCES = config.get("DEPLOYMENT", "ENGINE_INSTANCES")
 MAX_HEAP = config.get("DEPLOYMENT", "MAX_HEAP")
 MIN_HEAP = config.get("DEPLOYMENT", "MIN_HEAP")
@@ -67,9 +69,6 @@ def create_deployment():
                                           engine_type=ENGINE_TYPE,
                                           engine_version=ENGINE_VERSION,
                                           deployment_tags=[f'{DEPLOYMENT_TAGS}'])
-    # save id's for delete
-    config.set('DEPLOYMENT', 'DEPLOYMENT_ID', str(deployment.deployment_id))
-    config.set('DEPLOYMENT', 'ENVIRONMENT_ID', str(environment.environment_id))
     # Set engine labels
     labels = ENGINE_LABELS.split(",")
     deployment.engine_configuration.engine_labels = labels
@@ -132,8 +131,11 @@ def create_deployment():
     #           'production.maxBatchSize'])
 
     # Update external_resource_location
-    expected_external_resource_location = '/var/resources/externalResources.tgz'
-    deployment.engine_configuration.external_resource_location = expected_external_resource_location
+    if INSTALL_TYPE == "DOCKER":
+        deployment.engine_configuration.external_resource_source = EXTERNAL_RESOURCES_PATH_DOCKER
+    if INSTALL_TYPE == "TARBALL":
+        deployment.engine_configuration.external_resource_source = EXTERNAL_RESOURCES_PATH_TARBALL
+
 
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
@@ -159,6 +161,17 @@ def create_deployment():
     # persist changes to the deployment
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
+
+    # save id's for delete
+    update_config = configparser.ConfigParser()
+    update_config.optionxform = lambda option: option
+    update_config.read('deployment.conf')
+    update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
+    update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
+
+    with open('deployment.conf', 'w') as configfile:  # save
+        update_config.write(configfile)
+
     if INSTALL_TYPE == "DOCKER":
         # engine version string to include in docker container name
         if 'http.port' in config['SDC_PROPERTIES']:
@@ -170,25 +183,14 @@ def create_deployment():
         ports_list = [f"-p {port}:{port}" for port in ports_list]
         ports_string = ' '.join(str(port) for port in ports_list)
         if not ports_list:
-            # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
+            # run SDC container under Docker 'cluster' network
             install_script = deployment.install_script().replace("docker run",
-                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} ")
         else:
-            # run SDC container under Docker 'cluster' network + add a volume for MySql JDBC driver
-            # expose some Docker ports
+            # run SDC container under Docker 'cluster' network +expose some Docker ports
             install_script = deployment.install_script().replace("docker run",
-                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} {ports_string} -e STREAMSETS_LIBRARIES_EXTRA_DIR=/opt/sdc-extras -v /home/ubuntu/JDBC/mysql-connector-java-8.0.23.jar:/opt/sdc-extras/streamsets-datacollector-jdbc-lib/lib/mysql-connector-java-8.0.23.jar:ro ")
+                                                                 f"docker run --network=cluster  -h sdc.cluster --name sdc-{engine_version} {ports_string} ")
 
-        with open("install_script.sh", "w") as f:
-            f.write(install_script)
-        # Download the MySql JDBC driver if not present under $HOME/JDBC
-        with open("pre_install_script.sh", "w") as f:
-            if not os.path.exists("$HOME/JDBC/mysql-connector-java-8.0.23.tar.gz"):
-                f.write(
-                    'wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz -P $HOME/JDBC/\n')
-                f.write('tar -xf $HOME/JDBC/mysql-connector-java-8.0.23.tar.gz -C $HOME/JDBC/\n')
-                f.write('mv $HOME/JDBC/mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar $HOME/JDBC/\n')
-                f.write('echo "Finished running pre install tasks"')
         with open("install_script.sh", "w") as f:
             f.write('docker network create cluster\n')
             f.write(install_script)
@@ -201,32 +203,16 @@ def create_deployment():
                          f"--install-dir=$HOME/.streamsets/install/dc "
         with open("install_script.sh", "w") as f:
             f.write('ulimit -n 32768\n')
-            # if there's a requirement to pass in some java options during bootstrapping, set those via STREAMSETS_BOOTSTRAP_JAVA_OPTS.
-            # f.write('export STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<> -Dhttps.proxyPort=<> -Dhttp.proxyHost=<> -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
+            # if there's a requirement(for instance proxy configurations) to pass in some java options during
+            # bootstrapping, set those via STREAMSETS_BOOTSTRAP_JAVA_OPTS. f.write('export
+            # STREAMSETS_BOOTSTRAP_JAVA_OPTS="-Dhttps.proxyHost=<> -Dhttps.proxyPort=<> -Dhttp.proxyHost=<>
+            # -Dhttp.proxyPort=<> -Dhttp.nonProxyHosts=<>\n')
             f.write(install_script)
         os.chmod("install_script.sh", stat.S_IRWXU)
         os.system("sh install_script.sh")
-        # Download/install the MySql JDBC driver if not present
-        with open("post_install_script.sh", "w") as f:
-            if not os.path.exists("./mysql-connector-java-8.0.23.tar.gz"):
-                f.write('wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.23.tar.gz\n')
-                f.write('tar -xf mysql-connector-java-8.0.23.tar.gz\n')
-            f.write(
-                f"mkdir -p $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/externalResources"
-                f"/streamsets-libs-extras/streamsets-datacollector-jdbc-lib/lib/\n")
-            f.write(f'cp ./mysql-connector-java-8.0.23/mysql-connector-java-8.0.23.jar '
-                    f'$HOME/.streamsets/install/dc/streamsets-dataco'
-                    f'llector-{current_engine_version}/externalResources/streamsets-libs-extras/streamsets-datacollector'
-                    f'-jdbc-lib/lib/\n')
-            f.write(
-                f'sudo echo {GMAIL_CRED} > $HOME/.streamsets/install/dc/streamsets-datacollector-{current_engine_version}/etc/email-password.txt\n')
-            f.write('echo "Finished running post install tasks"')
-        os.chmod("post_install_script.sh", stat.S_IRWXU)
-        os.system("sh post_install_script.sh")
-        # restart engine after installing JDBC driver jar
-        deployment_id = deployment.deployment_id
-        os.system(
-            f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
+        # os.system( f'curl -X POST https://na01.hub.streamsets.com/provisioning/rest/v1/csp/deployment/{
+        # deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl"
+        # -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {CRED_ID}" -H "X-SS-App-Auth-Token: {CRED_TOKEN}" -i\n')
 
 
 def delete_deployment():
@@ -328,6 +314,12 @@ def update_deployment():
 
     properties = javaproperties.dumps(sdc_properties)
     deployment.engine_configuration.advanced_configuration.data_collector_configuration = properties
+
+    # Update external_resource_location
+    if INSTALL_TYPE == "DOCKER":
+        deployment.engine_configuration.external_resource_source = EXTERNAL_RESOURCES_PATH_DOCKER
+    if INSTALL_TYPE == "TARBALL":
+        deployment.engine_configuration.external_resource_source = EXTERNAL_RESOURCES_PATH_TARBALL
 
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
