@@ -25,11 +25,29 @@ DEPLOYMENT_TAGS=<DEPLOYMENT_TAGS>
 ENGINE_TYPE=DC
 ENGINE_VERSION=<>
 ENGINE_INSTANCES=1
+# comma separated list
+ENGINE_LABELS=dataops,streamsets
 INSTALL_TYPE=TARBALL
+DOCKER_NETWORK=cluster
+DOCKER_PORTS=port1,port2
+EXTERNAL_RESOURCES_PATH_TARBALL=<local path>
+EXTERNAL_RESOURCES_PATH_DOCKER=https://github.com/enterthematrix/dataops_provisioning/raw/main/externalResources.zip
+DEPLOYMENT_ID=deployment_id
+ENVIRONMENT_ID=environment_id
 MAX_HEAP=_optional_
 MIN_HEAP=_optional_
 SLACK_WEBHOOK=_optional_
 EMAIL_ADDRESS=_optional_
+
+
+
+INSTALL_TYPE=DOCKER
+MAX_HEAP=8192
+MIN_HEAP=8192
+EMAIL_ADDRESS=sanjeev@streamsets.com
+DOCKER_NETWORK=cluster
+DOCKER_PORTS=18888,18889
+
 
 
 [SDC_PROPERTIES]
