@@ -101,11 +101,11 @@ def create_deployment():
     #                                               deployment.engine_configuration.stage_libs]
 
     # get list of enterprise libs
-    with open('enterprise_libs.conf', 'r') as f:
-        for rec in f:
-            if rec.startswith('#'):
-                continue
-            deployment.engine_configuration.stage_libs.append(rec.rstrip())
+    # with open('enterprise_libs.conf', 'r') as f:
+    #     for rec in f:
+    #         if rec.startswith('#'):
+    #             continue
+    #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
 
     # retrieve deployment configs
     sdc_properties = javaproperties.loads(
