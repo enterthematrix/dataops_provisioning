@@ -330,39 +330,71 @@ def update_deployment():
     labels = ENGINE_LABELS.split(",")
     deployment.engine_configuration.engine_labels = labels
 
-    # Fewer stage libs for quick deployment
-    deployment.engine_configuration.stage_libs = []
-    with open('config/sdc/sdc_partial_stage_libs.conf', 'r') as f:
-        for rec in f:
-            if rec.startswith('#'):
-                continue
-            deployment.engine_configuration.stage_libs.append(rec.rstrip())
-    deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-                                                  deployment.engine_configuration.stage_libs]
+    if ENGINE_TYPE == 'DC':
+        # Fewer stage libs for quick deployment
+        with open('config/sdc/sdc_partial_stage_libs.conf', 'r') as f:
+            for rec in f:
+                if rec.startswith('#'):
+                    continue
+                deployment.engine_configuration.stage_libs.append(rec.rstrip())
+        deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+                                                      deployment.engine_configuration.stage_libs]
 
-    # # Full list of stage libs for complete deployment with all stages
-    # with open('sdc_stage_libs.conf', 'r') as f:
-    #     for rec in f:
-    #         if rec.startswith('#'): continue
-    #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
-    # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-    #                                               deployment.engine_configuration.stage_libs]
+        # # Full list of stage libs for complete deployment with all stages
+        # with open('sdc_stage_libs.conf', 'r') as f:
+        #     for rec in f:
+        #         if rec.startswith('#'): continue
+        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
+        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+        #                                               deployment.engine_configuration.stage_libs]
 
 
-    # retrieve deployment configs
-    ENGINE_PROPERTIES = javaproperties.loads(
-        deployment.engine_configuration.advanced_configuration.data_collector_configuration)
+        # retrieve deployment configs
+        engine_properties = javaproperties.loads(
+            deployment.engine_configuration.advanced_configuration.data_collector_configuration)
+    if ENGINE_TYPE == 'TF':
+        engine_properties = javaproperties.loads(
+            deployment.engine_configuration.advanced_configuration.transformer_configuration)
+        # Fewer stage libs for quick deployment
+        with open('config/transformer/transformer_partial_stage_libs.conf', 'r') as f:
+            for rec in f:
+                if rec.startswith('#'):
+                    continue
+                deployment.engine_configuration.stage_libs.append(rec.rstrip())
+        deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+                                                      deployment.engine_configuration.stage_libs]
 
-    # read SDC properties
+        # # Full list of stage libs for complete deployment with all stages
+        # with open('transformer_stage_libs.conf', 'r') as f:
+        #     for rec in f:
+        #         if rec.startswith('#'): continue
+        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
+        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
+        #                                               deployment.engine_configuration.stage_libs]
+
+        # retrieve deployment configs
+
+    # read engine properties
     for key in config['ENGINE_PROPERTIES']:
-        ENGINE_PROPERTIES[key] = config['ENGINE_PROPERTIES'][key]
+        engine_properties[key] = config['ENGINE_PROPERTIES'][key]
 
     # read runtime resources
     for key in config['RUNTIME_RESOURCES']:
-        ENGINE_PROPERTIES[key] = config['RUNTIME_RESOURCES'][key]
+        engine_properties[key] = config['RUNTIME_RESOURCES'][key]
 
-    engine_configurations = javaproperties.dumps(ENGINE_PROPERTIES)
-    deployment.engine_configuration.advanced_configuration.data_collector_configuration = engine_configurations
+    if platform == "darwin":
+        print("##### Mac Os Detected #####")
+        engine_properties['sdc.base.http.url'] = 'http://localhost:18630'
+
+    engine_configurations = javaproperties.dumps(engine_properties)
+    if ENGINE_TYPE == 'DC':
+        deployment.engine_configuration.advanced_configuration.data_collector_configuration = engine_configurations
+    if ENGINE_TYPE == 'TF':
+        deployment.engine_configuration.advanced_configuration.transformer_configuration = engine_configurations
+    # verify persisted config changes
+    # deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
+    # print(javaproperties.loads(deployment.engine_configuration.advanced_configuration.data_collector_configuration)[
+    #           'production.maxBatchSize'])
 
     # Update external_resource_location
     if INSTALL_TYPE == "DOCKER":
@@ -370,19 +402,18 @@ def update_deployment():
     if INSTALL_TYPE == "TARBALL":
         deployment.engine_configuration.external_resource_source = EXTERNAL_RESOURCES_PATH_TARBALL
 
+
     # Update JAVA OPTIONS
     java_config = deployment.engine_configuration.java_configuration
-    # default is PERCENTAGE
     java_config.java_memory_strategy = 'ABSOLUTE'
-    java_config.maximum_java_heap_size_in_mb = MIN_HEAP
-    java_config.minimum_java_heap_size_in_mb = MAX_HEAP
-    java_options = ""
-    with open('config/common/java_options.conf', 'r') as f:
-        for rec in f:
-            if rec.startswith('#'):
-                continue
-            java_options = f"{java_options} {rec.rstrip()}"
-        java_config.java_options = java_options
+    java_config.maximum_java_heap_size_in_mb = MAX_HEAP
+    java_config.minimum_java_heap_size_in_mb = MIN_HEAP
+    if ENGINE_TYPE == 'DC':
+        with open('config/common/java_options.conf', 'r') as f:
+            for rec in f:
+                if rec.startswith('#'):
+                    continue
+                java_config.java_options = f"{java_config.java_options} {rec.rstrip()}"
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
@@ -392,8 +423,12 @@ def update_deployment():
     cred_properties = javaproperties.dumps(cred_properties)
     deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
 
-    engine_configurations = javaproperties.dumps(ENGINE_PROPERTIES)
-    deployment.engine_configuration.advanced_configuration.data_collector_configuration = engine_configurations
+    engine_configurations = javaproperties.dumps(engine_properties)
+    if ENGINE_TYPE == 'DC':
+        deployment.engine_configuration.advanced_configuration.data_collector_configuration = engine_configurations
+    if ENGINE_TYPE == 'TF':
+        deployment.engine_configuration.advanced_configuration.transformer_configuration = engine_configurations
+
     # persist changes to the deployment
     sch.update_deployment(deployment)
     sch.stop_deployment(deployment)
