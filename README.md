@@ -50,7 +50,7 @@ DOCKER_PORTS=18888,18889
 
 
 
-[SDC_PROPERTIES]
+[ENGINE_PROPERTIES]
 production.maxBatchSize=_optional_
 mail.smtp.host=_optional_
 mail.smtp.port=_optional_
