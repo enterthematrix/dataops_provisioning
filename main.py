@@ -20,7 +20,7 @@ CRED_TOKEN = config.get("SECURITY", "CRED_TOKEN")
 SLACK_WEBHOOK = config.get("SECURITY", "SLACK_WEBHOOK")
 GMAIL_CRED = config.get("SECURITY", "GMAIL_CRED")
 
-config.read('deployment.conf')
+config.read('config/common/deployment.conf')
 ENVIRONMENT_NAME = config.get("DEPLOYMENT", "ENVIRONMENT_NAME")
 ENVIRONMENT_TYPE = config.get("DEPLOYMENT", "ENVIRONMENT_TYPE")
 ENVIRONMENT_TAGS = config.get("DEPLOYMENT", "ENVIRONMENT_TAGS")
@@ -183,7 +183,7 @@ def create_deployment():
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
-    config.read('deployment.conf')
+    config.read('config/common/deployment.conf')
     for key in config['CRED_STORE']:
         cred_properties[key] = config['CRED_STORE'][key]
     cred_properties = javaproperties.dumps(cred_properties)
@@ -202,7 +202,7 @@ def create_deployment():
     # save id's for delete
     update_config = configparser.ConfigParser()
     update_config.optionxform = lambda option: option
-    update_config.read('deployment.conf')
+    update_config.read('config/common/deployment.conf')
     update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
     update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
 
@@ -267,7 +267,7 @@ def create_deployment():
 
 def delete_deployment():
     try:
-        config.read('deployment.conf')
+        config.read('config/common/deployment.conf')
         # retrieve id's from the deployment.conf
         environment_id = config.get("DEPLOYMENT", "ENVIRONMENT_ID")
         deployment_id = config.get("DEPLOYMENT", "DEPLOYMENT_ID")
@@ -386,7 +386,7 @@ def update_deployment():
 
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
-    config.read('deployment.conf')
+    config.read('config/common/deployment.conf')
     for key in config['CRED_STORE']:
         cred_properties[key] = config['CRED_STORE'][key]
     cred_properties = javaproperties.dumps(cred_properties)
