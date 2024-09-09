@@ -293,7 +293,7 @@ def delete_deployment():
     try:
         if INSTALL_TYPE == "TARBALL":
             if ENGINE_TYPE == 'TF':
-                installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{ENGINE_VERSION}"
+                installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/transformer/streamsets-transformer_{SCALA_VERSION}-{ENGINE_VERSION}"
             if ENGINE_TYPE == 'DC':
                 installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{ENGINE_VERSION}"
             with open("cleanup_script.sh", "w") as f:
