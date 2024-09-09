@@ -1,7 +1,10 @@
 # Provisioning DataOps environment
 
 ### Pre-requisites
-1. [Install](https://docs.streamsets.com/platform-sdk/learn/installation.html) StreamSets SDK for Python 
+1. [Install](https://docs.streamsets.com/platform-sdk/learn/installation.html) StreamSets SDK for Python and other packages
+```commandline
+pip3 install -r requirements.txt
+```
 2. Create the following configuration files:
 
 credentials.properties:
