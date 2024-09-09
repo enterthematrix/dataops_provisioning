@@ -249,8 +249,8 @@ def create_deployment():
             install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
                          f"--install-dir=$HOME/.streamsets/install/dc "
         if ENGINE_TYPE == 'TF':
-            install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/tf " \
-                         f"--install-dir=$HOME/.streamsets/install/tf "
+            install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/transformer " \
+                         f"--install-dir=$HOME/.streamsets/install/transformer "
         with open("install_script.sh", "w") as f:
             f.write('ulimit -n 32768\n')
             # if there's a requirement(for instance proxy configurations) to pass in some java options during
@@ -292,7 +292,10 @@ def delete_deployment():
 
     try:
         if INSTALL_TYPE == "TARBALL":
-            installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{ENGINE_VERSION}"
+            if ENGINE_TYPE == 'TF':
+                installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{ENGINE_VERSION}"
+            if ENGINE_TYPE == 'DC':
+                installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{ENGINE_VERSION}"
             with open("cleanup_script.sh", "w") as f:
                 f.write(
                     f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
