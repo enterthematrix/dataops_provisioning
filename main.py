@@ -81,6 +81,7 @@ def create_deployment():
                                               scala_binary_version=SCALA_VERSION,
                                               deployment_tags=[f'{DEPLOYMENT_TAGS}'])
 
+
     # Set engine labels
     labels = ENGINE_LABELS.split(",")
     deployment.engine_configuration.engine_labels = labels
@@ -95,6 +96,15 @@ def create_deployment():
     # retrieve deployment to make changes
     deployment = sch.deployments.get(deployment_name=DEPLOYMENT_NAME)
 
+    # save id's for delete
+    update_config = configparser.ConfigParser()
+    update_config.optionxform = lambda option: option
+    update_config.read('config/common/deployment.conf')
+    update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
+    update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
+
+    with open('config/common/deployment.conf', 'w') as configfile:  # save
+        update_config.write(configfile)
 
     if ENGINE_TYPE == 'DC':
         # Fewer stage libs for quick deployment
@@ -105,14 +115,6 @@ def create_deployment():
                 deployment.engine_configuration.stage_libs.append(rec.rstrip())
         deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
                                                       deployment.engine_configuration.stage_libs]
-
-        # # Full list of stage libs for complete deployment with all stages
-        # with open('sdc_stage_libs.conf', 'r') as f:
-        #     for rec in f:
-        #         if rec.startswith('#'): continue
-        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
-        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-        #                                               deployment.engine_configuration.stage_libs]
 
 
         # retrieve deployment configs
@@ -130,15 +132,6 @@ def create_deployment():
         deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
                                                       deployment.engine_configuration.stage_libs]
 
-        # # Full list of stage libs for complete deployment with all stages
-        # with open('transformer_stage_libs.conf', 'r') as f:
-        #     for rec in f:
-        #         if rec.startswith('#'): continue
-        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
-        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-        #                                               deployment.engine_configuration.stage_libs]
-
-        # retrieve deployment configs
 
     # read engine properties
     for key in config['ENGINE_PROPERTIES']:
@@ -198,16 +191,6 @@ def create_deployment():
     # persist changes to the deployment
     sch.update_deployment(deployment)
     sch.start_deployment(deployment)
-
-    # save id's for delete
-    update_config = configparser.ConfigParser()
-    update_config.optionxform = lambda option: option
-    update_config.read('config/common/deployment.conf')
-    update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
-    update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
-
-    with open('config/common/deployment.conf', 'w') as configfile:  # save
-        update_config.write(configfile)
 
     if INSTALL_TYPE == "DOCKER":
         # engine version string to include in docker container name
@@ -343,15 +326,6 @@ def update_deployment():
         deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
                                                       deployment.engine_configuration.stage_libs]
 
-        # # Full list of stage libs for complete deployment with all stages
-        # with open('sdc_stage_libs.conf', 'r') as f:
-        #     for rec in f:
-        #         if rec.startswith('#'): continue
-        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
-        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-        #                                               deployment.engine_configuration.stage_libs]
-
-
         # retrieve deployment configs
         engine_properties = javaproperties.loads(
             deployment.engine_configuration.advanced_configuration.data_collector_configuration)
@@ -367,15 +341,6 @@ def update_deployment():
         deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
                                                       deployment.engine_configuration.stage_libs]
 
-        # # Full list of stage libs for complete deployment with all stages
-        # with open('transformer_stage_libs.conf', 'r') as f:
-        #     for rec in f:
-        #         if rec.startswith('#'): continue
-        #         deployment.engine_configuration.stage_libs.append(rec.rstrip())
-        # deployment.engine_configuration.stage_libs = [f"{lib}:{current_engine_version}" for lib in
-        #                                               deployment.engine_configuration.stage_libs]
-
-        # retrieve deployment configs
 
     # read engine properties
     for key in config['ENGINE_PROPERTIES']:
