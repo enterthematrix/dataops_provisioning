@@ -1,8 +1,10 @@
 import ast
+import re
 
 def strip_library_name(library):
     # Remove the prefix and suffix
-    return library.replace("streamsets-datacollector-", "").replace("-lib:5.12.0", "")
+    library = library.replace("streamsets-datacollector-", "")
+    return re.sub(r"-lib:[^\s]+", "",library)
 
 # Stage lib for SDC
 with open('config/sdc/sdc_stage_libs.txt', 'r') as file:
