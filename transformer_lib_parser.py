@@ -3,7 +3,7 @@ import re
 
 def strip_library_name(library):
     # Remove the prefix and suffix
-    library = library.replace("streamsets-transformer-", "")
+    library = library.replace("streamsets-transformer-", "").replace("streamsets-spark-","")
     return re.sub(r"-lib:[^\s]+", "",library)
 
 # Stage lib for SDC
