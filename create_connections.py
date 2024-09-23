@@ -12,7 +12,7 @@ start_time = time.time()
 config = configparser.ConfigParser()
 config.optionxform = lambda option: option
 
-CREDENTIALS_PROPERTY_PATH = "/Users/sanju/workspace/toolkit/private/credentials.properties"
+CREDENTIALS_PROPERTY_PATH = "./private/credentials.properties"
 config.read(CREDENTIALS_PROPERTY_PATH)
 CRED_ID = config.get("SECURITY", "CRED_ID")
 CRED_TOKEN = config.get("SECURITY", "CRED_TOKEN")
@@ -24,8 +24,8 @@ sch = ControlHub(credential_id=CRED_ID, token=CRED_TOKEN)
 engine = sch.engines.get(engine_url='http://sdc.cluster:18512')
 
 # Open and read the JSON file
-json_file_path = "/Users/sanju/workspace/toolkit/resources/connections.json"
-csv_file_path = "/Users/sanju/workspace/toolkit/resources/connections.csv"
+json_file_path = "./resources/connections.json"
+csv_file_path = "./resources/connections.csv"
 with open(json_file_path, 'r') as file:
     data = json.load(file)  # Load JSON data from the file
 
@@ -144,11 +144,11 @@ def delete_connections():
             sch.delete_connection(connection)
 
 
-get_connection_configs('sanju_s3_with_accessKeys')
+# get_connection_configs('sanju_s3_with_accessKeys')
 # create_connection()
 # json_to_csv()
 # create_connection_from_csv()
-# delete_connections()
+delete_connections()
 # create_connection_from_json()
 
 print("Time for completion: ", (time.time() - start_time), " secs")
