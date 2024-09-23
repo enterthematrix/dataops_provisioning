@@ -16,7 +16,7 @@ CRED_ID=<SCH CRED_ID>
 CRED_TOKEN=<SCH CRED_TOKEN>
 ```
 3. Update config files under config dir as per requirements
-4. Usage: ```python main.py  ``` to create/update/delete DataOps deployment
+4. Usage: ```python deploy.py  ``` to create/update/delete DataOps deployment
 
 
 
