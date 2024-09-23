@@ -1,0 +1,46 @@
+{
+  "connections": [
+    {
+      "connection_type": "STREAMSETS_JDBC",
+      "title": "sanju_jdbc_1",
+      "tags": "['sanju','jdbc_connection']",
+      "configs": {
+        "connectionString": "jdbc:mysql://localhost:3306/sample?useSSL=true&autoReconnect=true",
+        "useCredentials": true,
+        "username": "username",
+        "password": "password"
+      }
+    },
+    {
+      "connection_type": "STREAMSETS_JDBC",
+      "title": "sanju_jdbc_2",
+      "tags": "['sanju','jdbc_connection']",
+      "configs": {
+        "connectionString": "jdbc:mysql://localhost:3306/sample?useSSL=true&autoReconnect=true",
+        "useCredentials": true,
+        "username": "username",
+        "password": "password"
+      }
+    },
+    {
+      "connection_type": "STREAMSETS_AWS_S3",
+      "tags": "['sanju','s3_connection']",
+      "title": "sanju_s3_with_accessKeys",
+      "configs": {
+        "awsConfig.credentialMode"    : "WITH_CREDENTIALS",
+        "awsConfig.awsAccessKeyId"    : "key"             ,
+        "awsConfig.awsSecretAccessKey": "secret"
+      }
+    },
+    {
+      "connection_type": "STREAMSETS_AWS_S3",
+      "title": "sanju_s3_with_role",
+      "tags": "['sanju','s3_connection']",
+      "configs": {
+        "awsConfig.credentialMode": "WITH_IAM_ROLES",
+        "awsConfig.isAssumeRole": true,
+        "awsConfig.roleARN": "arn:aws:iam::413405282275:Okta-CS/sanjeev"
+      }
+    }
+  ]
+}
