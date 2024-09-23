@@ -1,0 +1,5 @@
+connection_type,title,tags,configs
+STREAMSETS_JDBC,sanju_jdbc_1,"['sanju','jdbc_connection']","{'connectionString': 'jdbc:mysql://localhost:3306/sample?useSSL=true&autoReconnect=true', 'useCredentials': True, 'username': 'username', 'password': 'password'}"
+STREAMSETS_JDBC,sanju_jdbc_2,"['sanju','jdbc_connection']","{'connectionString': 'jdbc:mysql://localhost:3306/sample?useSSL=true&autoReconnect=true', 'useCredentials': True, 'username': 'username', 'password': 'password'}"
+STREAMSETS_AWS_S3,sanju_s3_with_accessKeys,"['sanju','s3_connection']","{'awsConfig.credentialMode': 'WITH_CREDENTIALS', 'awsConfig.awsAccessKeyId': 'key', 'awsConfig.awsSecretAccessKey': 'secret'}"
+STREAMSETS_AWS_S3,sanju_s3_with_role,"['sanju','s3_connection']","{'awsConfig.credentialMode': 'WITH_IAM_ROLES', 'awsConfig.isAssumeRole': True, 'awsConfig.roleARN': 'arn:aws:iam::413405282275:Okta-CS/sanjeev'}"
