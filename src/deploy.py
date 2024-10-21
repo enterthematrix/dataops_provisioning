@@ -138,8 +138,9 @@ def create_deployment():
         engine_properties[key] = config['ENGINE_PROPERTIES'][key]
 
     # read runtime resources
-    for key in config['RUNTIME_RESOURCES']:
-        engine_properties[key] = config['RUNTIME_RESOURCES'][key]
+    if 'RUNTIME_RESOURCES' in config:
+        for key in config['RUNTIME_RESOURCES']:
+            engine_properties[key] = config['RUNTIME_RESOURCES'][key]
 
     if platform == "darwin":
         print("##### Mac Os Detected #####")
@@ -177,10 +178,11 @@ def create_deployment():
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
     config.read('config/common/deployment.conf')
-    for key in config['CRED_STORE']:
-        cred_properties[key] = config['CRED_STORE'][key]
-    cred_properties = javaproperties.dumps(cred_properties)
-    deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
+    if 'CRED_STORE' in config:
+        for key in config['CRED_STORE']:
+            cred_properties[key] = config['CRED_STORE'][key]
+        cred_properties = javaproperties.dumps(cred_properties)
+        deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
 
     engine_configurations = javaproperties.dumps(engine_properties)
     if ENGINE_TYPE == 'DC':
@@ -347,8 +349,10 @@ def update_deployment():
         engine_properties[key] = config['ENGINE_PROPERTIES'][key]
 
     # read runtime resources
-    for key in config['RUNTIME_RESOURCES']:
-        engine_properties[key] = config['RUNTIME_RESOURCES'][key]
+    if 'RUNTIME_RESOURCES' in config:
+        for key in config['RUNTIME_RESOURCES']:
+            engine_properties[key] = config['RUNTIME_RESOURCES'][key]
+
 
     if platform == "darwin":
         print("##### Mac Os Detected #####")
@@ -386,10 +390,11 @@ def update_deployment():
     # configure aws credential store
     cred_properties = javaproperties.loads(deployment.engine_configuration.advanced_configuration.credential_stores)
     config.read('config/common/deployment.conf')
-    for key in config['CRED_STORE']:
-        cred_properties[key] = config['CRED_STORE'][key]
-    cred_properties = javaproperties.dumps(cred_properties)
-    deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
+    if 'CRED_STORE' in config:
+        for key in config['CRED_STORE']:
+            cred_properties[key] = config['CRED_STORE'][key]
+        cred_properties = javaproperties.dumps(cred_properties)
+        deployment.engine_configuration.advanced_configuration.credential_stores = cred_properties
 
     engine_configurations = javaproperties.dumps(engine_properties)
     if ENGINE_TYPE == 'DC':
