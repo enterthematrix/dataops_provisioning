@@ -144,7 +144,7 @@ def delete_connections():
             sch.delete_connection(connection)
 
 
-get_connection_configs('sanju_s3_with_accessKeys')
+get_connection_configs('Sanju_Snowflake')
 # create_connection()
 # json_to_csv()
 # create_connection_from_csv()
