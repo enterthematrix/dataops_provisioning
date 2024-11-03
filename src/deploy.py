@@ -105,7 +105,7 @@ class DeploymentManager:
             # Save IDs for cleanup
             update_config = configparser.ConfigParser()
             update_config.optionxform = lambda option: option
-            update_config.read('config/common/deployment.conf')
+            update_config.read(DEPLOYMENT_CONFIG)
             update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
             update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
 
@@ -255,32 +255,41 @@ class DeploymentManager:
                         f.write(install_script)
                     os.chmod("install_script.sh", stat.S_IRWXU)
                     os.system("sh install_script.sh")
+                    self.logger.log_msg('info', "Deployment completed successfully.")
+                    self.logger.log_msg('info', "Deleting deployment scripts")
+                    self.cleanup_deployment_scripts()
+                    # Log the time for completion
+                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
 
-                    if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
-                        install_script = deployment.install_script(install_mechanism='BACKGROUND')
-                        # defaults the download & install location
-                        if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                            install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
-                                             f"--install-dir=$HOME/.streamsets/install/dc "
-                        if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                            install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/transformer " \
-                                             f"--install-dir=$HOME/.streamsets/install/transformer "
-
-                        with open("install_script.sh", "w") as f:
-                            f.write('ulimit -n 32768\n')
-                            # Write the install script to file
-                            f.write(install_script)
-                        os.chmod("install_script.sh", stat.S_IRWXU)
-                        os.system("sh install_script.sh")
-                        self.logger.log_msg('info', "Deployment completed successfully.")
-                        # Log the time for completion
-                        self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
                 except Exception as e:
                     self.logger.log_msg('error', f"Engine install failed: {e}")
 
+
+            # Handle TARBALL installation
+            if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
+                install_script = deployment.install_script(install_mechanism='BACKGROUND')
+                # defaults the download & install location
+                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
+                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
+                                     f"--install-dir=$HOME/.streamsets/install/dc "
+                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
+                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/transformer " \
+                                     f"--install-dir=$HOME/.streamsets/install/transformer "
+
+                with open("install_script.sh", "w") as f:
+                    f.write('ulimit -n 32768\n')
+                    # Write the install script to file
+                    f.write(install_script)
+                os.chmod("install_script.sh", stat.S_IRWXU)
+                os.system("sh install_script.sh")
+                self.logger.log_msg('info', "Deployment completed successfully.")
+                self.logger.log_msg('info', "Deleting deployment scripts")
+                self.cleanup_deployment_scripts()
+                # Log the time for completion
+                self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+
         except Exception as e:
             self.logger.log_msg('error', f"An error occurred during deployment creation: {e}")
-
 
     def delete_deployment(self):
         try:
@@ -334,21 +343,12 @@ class DeploymentManager:
             os.system("sh cleanup_script.sh")
             self.logger.log_msg('info', "Finished cleanup tasks !!")
             self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+            self.logger.log_msg('info', "Deleting deployment scripts")
+            self.cleanup_deployment_scripts()
             # Log the time for completion
             self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
         except:
             self.logger.log_msg('warning', "No running engine found for this deployment")
-        cleanup_files = [
-            "install_script.sh",
-            "post_install_script.sh",
-            "pre_install_script.sh",
-            "cleanup_script.sh"
-        ]
-        for file in cleanup_files:
-            if os.path.exists(file):
-                os.remove(file)
-                self.logger.log_msg('info', "Installation scripts removed")
-
 
     def update_deployment(self):
         deployment = self.control_hub.deployments.get(deployment_name=self.config.get("DEPLOYMENT", "DEPLOYMENT_NAME"))
@@ -461,11 +461,20 @@ class DeploymentManager:
             f'-H "X-SS-App-Auth-Token: {control_hub.cred_token}" -i\n'
         )
         self.logger.log_msg('info', "Environment/Deployment updated successfully.")
-        self.logger.log_msg('info', "Please start the engines")
         # Log the time for completion
         self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
-    # except Exception as e:
-    #     self.logger.log_msg('error', f"Failed to restart deployment after changes: {e}")
+
+    def cleanup_deployment_scripts(self):
+        cleanup_files = [
+            "install_script.sh",
+            "post_install_script.sh",
+            "pre_install_script.sh",
+            "cleanup_script.sh"
+        ]
+        for file in cleanup_files:
+            if os.path.exists(file):
+                os.remove(file)
+        self.logger.log_msg('info', "Deployment scripts removed")
 
     def run(self):
         options = {
@@ -510,7 +519,7 @@ class DeploymentManager:
                         break
 
                 if user_choice == "proceed":
-                    self.logger.log_msg('warning',
+                    self.logger.log_msg('info',
                                         f"Deleting the deployment [ {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} ]")
                     self.delete_deployment()
                     self.create_deployment()
