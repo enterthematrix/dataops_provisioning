@@ -1,14 +1,10 @@
 import configparser
 import os
-import shutil
-import stat
 import subprocess
 import time
 import warnings
-from sys import platform
 import javaproperties
 import pyfiglet
-from streamsets.sdk import ControlHub
 
 from deployment_logger import Logger
 from controlhub_manager import ControlHubManager
@@ -24,6 +20,7 @@ TARBALL_DOWNLOAD_PATH_TRANSFORMER = '.streamsets/download/transformer'
 TARBALL_INSTALLATION_PATH_SDC = '.streamsets/install/dc'
 TARBALL_INSTALLATION_PATH_TRANSFORMER = '.streamsets/install/transformer'
 SCH_BASE_URL = 'https://na01.hub.streamsets.com'
+SCRIPT_TIMEOUT = 300
 
 
 class DeploymentManager:
@@ -255,7 +252,6 @@ class DeploymentManager:
                             raise
                     try:
                         # run docker run command for the engine
-                        self.logger.log_msg('info', f"Running the command: {install_script}")
                         subprocess.run(install_script, check=True, capture_output=True, text=True, shell=True)
                         self.logger.log_msg('info', "Deployment completed successfully.")
                         # Log the time for completion
@@ -276,22 +272,22 @@ class DeploymentManager:
                 # defaults the download & install location
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
                     install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_SDC} " \
-                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_SDC} "
+                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_SDC}"
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                     install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_TRANSFORMER} " \
-                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_TRANSFORMER} "
+                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_TRANSFORMER}"
+                try:
+                    # run install script for tarball install
+                    # ulimit -n 32768
+                    subprocess.run(install_script, check=True, shell=True, timeout=SCRIPT_TIMEOUT)
+                    self.logger.log_msg('info', "Deployment completed successfully.")
+                    # Log the time for completion
+                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+                except subprocess.TimeoutExpired:
+                    self.logger.log_msg('error',"The install script took too long to complete and was terminated.")
+                except subprocess.CalledProcessError as e:
+                    self.logger.log_msg('error', f"Engine install failed: {e.stderr}")
 
-                with open("install_script.sh", "w") as f:
-                    f.write('ulimit -n 32768\n')
-                    # Write the install script to file
-                    f.write(install_script)
-                os.chmod("install_script.sh", stat.S_IRWXU)
-                os.system("sh install_script.sh")
-                self.logger.log_msg('info', "Deployment completed successfully.")
-                self.logger.log_msg('info', "Deleting deployment scripts")
-                # self.cleanup_deployment_scripts()
-                # Log the time for completion
-                self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
         except Exception as e:
             self.logger.log_msg('error', f"An error occurred during deployment creation: {e}")
 
@@ -328,24 +324,22 @@ class DeploymentManager:
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                     installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}/streamsets-transformer_{self.config.get("DEPLOYMENT", "SCALA_VERSION")}-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
-                    pid_command = f"ps aux | grep streamsets-transformer-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}"
+                    with open("cleanup_script.sh", "w") as f:
+                        f.write(
+                            f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
+                        f.write(f"kill -9 $pid\n")
+                        f.write(f"rm -rf {installation_dir}\n")
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
                     installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
-                    pid_command = f"ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}"
-
-                dir_cleanup_command = f"rm -rf {installation_dir}"
-                try:
-                    # get the process id for the engine
-                    pid = subprocess.run(pid_command, capture_output=True, text=True, check=True, shell=True)
-                    kill_command = f"kill -9 {pid}"
-                    subprocess.run(kill_command, capture_output=True, text=True, check=True, shell=True)
-                    subprocess.run(dir_cleanup_command, capture_output=True, text=True, check=True, shell=True)
-                    self.logger.log_msg('info', "Finished cleanup tasks !!")
-                    self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
-                    # Log the time for completion
-                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
-                except subprocess.CalledProcessError as e:
-                    self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
+                    try:
+                        # get the process id for the engine
+                        subprocess.run(f"rm -rf {installation_dir}", check=True, shell=True)
+                        self.logger.log_msg('info', "Finished cleanup tasks !!")
+                        self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+                        # Log the time for completion
+                        self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+                    except subprocess.CalledProcessError as e:
+                        self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
 
             # DOCKER cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
@@ -362,8 +356,8 @@ class DeploymentManager:
                 except subprocess.CalledProcessError as e:
                     self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
 
-        except:
-            self.logger.log_msg('warning', "No running engine found for this deployment")
+        except Exception as e:
+            self.logger.log_msg('error', f"Deployment/Environment deletion encountered problems: {e}")
 
     def update_deployment(self):
         deployment = self.control_hub.deployments.get(deployment_name=self.config.get("DEPLOYMENT", "DEPLOYMENT_NAME"))
@@ -376,7 +370,6 @@ class DeploymentManager:
         deployment.engine_configuration.engine_labels = labels
 
         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-            # Fewer stage libs for quick deployment
             with open(SDC_STAGE_LIBS, 'r') as f:
                 for rec in f:
                     if rec.startswith('#'):
@@ -391,7 +384,6 @@ class DeploymentManager:
         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
             engine_properties = javaproperties.loads(
                 deployment.engine_configuration.advanced_configuration.transformer_configuration)
-            # Fewer stage libs for quick deployment
             with open(TRANSFORMER_STAGE_LIBS, 'r') as f:
                 for rec in f:
                     if rec.startswith('#'):
@@ -463,16 +455,13 @@ class DeploymentManager:
 
         # persist changes to the deployment
         self.control_hub.update_deployment(deployment)
-        # self.control_hub.stop_deployment(deployment)
-        # self.control_hub.start_deployment(deployment)
         deployment_id = deployment.deployment_id
         control_hub = ControlHubManager()
         control_hub.controlHub_login()
         # restart engine after updating the deployment
         restart_engine_command = f'curl -X POST {SCH_BASE_URL}/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {control_hub.cred_id}" -H "X-SS-App-Auth-Token: {control_hub.cred_token}" -i'
         try:
-            result = subprocess.run(restart_engine_command, capture_output=True, text=True, check=True, shell=True)
-            print(result)
+            subprocess.run(restart_engine_command, capture_output=True, text=True, check=True, shell=True)
             self.logger.log_msg('info', "Environment/Deployment updated successfully.")
             # Log the time for completion
             self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
@@ -518,7 +507,7 @@ class DeploymentManager:
                 self.logger.log_msg('warning',
                                     f"Deployment [ {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} ] already exists")
                 self.logger.log_msg('warning',
-                                    f"If you proceed, deployment [ {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} ] will first be terminated ")
+                                    f"If you proceed, deployment [ {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} ] & environment [ {self.config.get('DEPLOYMENT', 'ENVIRONMENT_NAME')} ] will first be terminated ")
                 options = {
                     '1': 'proceed',
                     '2': 'exit'
@@ -552,6 +541,8 @@ class DeploymentManager:
         elif user_choice == "delete":
             self.logger.log_msg('warning',
                                 f"Deployment [ {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} ] will be deleted!!")
+            self.logger.log_msg('warning',
+                                f"Environment [ {self.config.get('DEPLOYMENT', 'ENVIRONMENT_NAME')} ] will be deleted!!")
             options = {
                 '1': 'proceed',
                 '2': 'exit'
