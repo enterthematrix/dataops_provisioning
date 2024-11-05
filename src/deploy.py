@@ -471,12 +471,15 @@ class DeploymentManager:
         # restart engine after updating the deployment
         restart_engine_command = f'curl -X POST {SCH_BASE_URL}/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {control_hub.cred_id}" -H "X-SS-App-Auth-Token: {control_hub.cred_token}" -i'
         try:
-            subprocess.run(restart_engine_command, capture_output=True, text=True, check=True, shell=True)
+            result = subprocess.run(restart_engine_command, capture_output=True, text=True, check=True, shell=True)
+            print(result)
+            self.logger.log_msg('info', "Environment/Deployment updated successfully.")
+            # Log the time for completion
+            self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+
         except subprocess.CalledProcessError as e:
             self.logger.log_msg('info', f"Engine restart encountered error: {e.stderr} ")
-        self.logger.log_msg('info', "Environment/Deployment updated successfully.")
-        # Log the time for completion
-        self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+
 
     def cleanup_deployment_scripts(self):
         cleanup_files = [
