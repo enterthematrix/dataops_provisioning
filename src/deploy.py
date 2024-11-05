@@ -19,6 +19,10 @@ JAVA_OPTS = 'config/common/java_options.conf'
 SDC_STAGE_LIBS = 'config/sdc/sdc_partial_stage_libs.conf'
 TRANSFORMER_STAGE_LIBS = 'config/transformer/transformer_partial_stage_libs.conf'
 INSTALLATION_HOME = os.getenv("HOME")
+TARBALL_DOWNLOAD_PATH_SDC = '.streamsets/download/dc'
+TARBALL_DOWNLOAD_PATH_TRANSFORMER = '.streamsets/download/transformer'
+TARBALL_INSTALLATION_PATH_SDC = '.streamsets/install/dc'
+TARBALL_INSTALLATION_PATH_TRANSFORMER = '.streamsets/install/transformer'
 SCH_BASE_URL = 'https://na01.hub.streamsets.com'
 
 
@@ -109,7 +113,7 @@ class DeploymentManager:
             update_config['DEPLOYMENT']['DEPLOYMENT_ID'] = str(deployment.deployment_id)
             update_config['DEPLOYMENT']['ENVIRONMENT_ID'] = str(environment.environment_id)
 
-            with open('config/common/deployment.conf', 'w') as configfile:
+            with open(DEPLOYMENT_CONFIG, 'w') as configfile:
                 update_config.write(configfile)
 
             if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
@@ -237,7 +241,6 @@ class DeploymentManager:
                         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                             install_script = deployment.install_script().replace("docker run",
                                                                                  f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h transformer.cluster --name tf-{engine_version} {ports_string} ")
-
                     try:
                         # Attempt to create the DOCKER_NETWORK
                         subprocess.run(
@@ -250,31 +253,38 @@ class DeploymentManager:
                         else:
                             # For any other error, re-raise the exception
                             raise
-
-                    with open("install_script.sh", "w") as f:
-                        f.write(install_script)
-                    os.chmod("install_script.sh", stat.S_IRWXU)
-                    os.system("sh install_script.sh")
-                    self.logger.log_msg('info', "Deployment completed successfully.")
-                    self.logger.log_msg('info', "Deleting deployment scripts")
-                    self.cleanup_deployment_scripts()
-                    # Log the time for completion
-                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
-
+                    try:
+                        subprocess.run(install_script, capture_output=True, text=True, shell=True)
+                        self.logger.log_msg('info', "Deployment completed successfully.")
+                        # self.logger.log_msg('info', "Deleting deployment scripts")
+                        # self.cleanup_deployment_scripts()
+                        # Log the time for completion
+                        self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+                    except subprocess.CalledProcessError as e:
+                        self.logger.log_msg('error', f"Engine set-up encountered error: {e.stderr}")
+                    # with open("install_script.sh", "w") as f:
+                    #     f.write(install_script)
+                    # os.chmod("install_script.sh", stat.S_IRWXU)
+                    # os.system("sh install_script.sh")
                 except Exception as e:
                     self.logger.log_msg('error', f"Engine install failed: {e}")
 
 
             # Handle TARBALL installation
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
+                # create download and install directories
+                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
+                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}", exist_ok=True)
+                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
+                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}", exist_ok=True)
                 install_script = deployment.install_script(install_mechanism='BACKGROUND')
                 # defaults the download & install location
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/dc " \
-                                     f"--install-dir=$HOME/.streamsets/install/dc "
+                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_SDC} " \
+                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_SDC} "
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/.streamsets/download/transformer " \
-                                     f"--install-dir=$HOME/.streamsets/install/transformer "
+                    install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_TRANSFORMER} " \
+                                     f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_TRANSFORMER} "
 
                 with open("install_script.sh", "w") as f:
                     f.write('ulimit -n 32768\n')
@@ -284,7 +294,7 @@ class DeploymentManager:
                 os.system("sh install_script.sh")
                 self.logger.log_msg('info', "Deployment completed successfully.")
                 self.logger.log_msg('info', "Deleting deployment scripts")
-                self.cleanup_deployment_scripts()
+                # self.cleanup_deployment_scripts()
                 # Log the time for completion
                 self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
 
@@ -296,7 +306,6 @@ class DeploymentManager:
             # retrieve id's from the deployment.conf written during creation
             environment_id = self.config.get("DEPLOYMENT", "ENVIRONMENT_ID")
             deployment_id = self.config.get("DEPLOYMENT", "DEPLOYMENT_ID")
-
             deployment = self.control_hub.deployments.get(deployment_id=deployment_id)
             current_engine_version = deployment.engine_configuration.engine_version
             if 'http.port' in self.config['ENGINE_PROPERTIES']:
@@ -304,8 +313,8 @@ class DeploymentManager:
             else:
                 engine_version = current_engine_version.replace(".", "")
             self.control_hub.delete_deployment(deployment)
-            self.logger.log_msg('info', f"Deployment {self.config.get("DEPLOYMENT", "DEPLOYMENT_NAME")} removed")
-
+            self.logger.log_msg('info',
+                                f"Deployment {self.config.get('DEPLOYMENT', 'DEPLOYMENT_NAME')} removed ")
         except:
             self.logger.log_msg('warning',
                                 f"Deployment {self.config.get("DEPLOYMENT", "DEPLOYMENT_NAME")} not found !!")
@@ -321,32 +330,41 @@ class DeploymentManager:
                                 f"Environment {self.config.get("DEPLOYMENT", "ENVIRONMENT_NAME")} not found !!")
 
         try:
+            # TARBALL cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                    installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/transformer/streamsets-transformer_{self.config.get("DEPLOYMENT", "SCALA_VERSION")}-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
+                    installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}/streamsets-transformer_{self.config.get("DEPLOYMENT", "SCALA_VERSION")}-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                    installation_dir = f"{INSTALLATION_HOME}/.streamsets/install/dc/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
+                    installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
                 with open("cleanup_script.sh", "w") as f:
                     f.write(
                         f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
                     f.write(f"kill -9 $pid\n")
                     f.write(f"rm -rf {installation_dir}\n")
-                    # f.write('echo "Finished cleanup tasks"\n')
+            # DOCKER cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
                 with open("cleanup_script.sh", "w") as f:
                     if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                        f.write(f"docker rm -f tf-{engine_version}\n")
+                        # f.write(f"docker rm -f tf-{engine_version}\n")
+                        cleanup_command = f"docker rm -f tf-{engine_version}\n"
                     if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                        f.write(f"docker rm -f sdc-{engine_version}\n")
+                        # f.write(f"docker rm -f sdc-{engine_version}\n")
+                        cleanup_command = f"docker rm -f sdc-{engine_version}\n"
+
                     # f.write('echo "Finished cleanup tasks"\n')
-            os.chmod("cleanup_script.sh", stat.S_IRWXU)
-            os.system("sh cleanup_script.sh")
-            self.logger.log_msg('info', "Finished cleanup tasks !!")
-            self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
-            self.logger.log_msg('info', "Deleting deployment scripts")
-            self.cleanup_deployment_scripts()
-            # Log the time for completion
-            self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+            # os.chmod("cleanup_script.sh", stat.S_IRWXU)
+            # os.system("sh cleanup_script.sh")
+            try:
+                subprocess.run([cleanup_command], capture_output=True, text=True, check=True)
+                self.logger.log_msg('info', "Finished cleanup tasks !!")
+                self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+                self.logger.log_msg('info', "Deleting deployment scripts")
+                self.cleanup_deployment_scripts()
+                # Log the time for completion
+                self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+            except subprocess.CalledProcessError as e:
+                self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
+
         except:
             self.logger.log_msg('warning', "No running engine found for this deployment")
 
