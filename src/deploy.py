@@ -21,6 +21,8 @@ TARBALL_INSTALLATION_PATH_SDC = '.streamsets/install/dc'
 TARBALL_INSTALLATION_PATH_TRANSFORMER = '.streamsets/install/transformer'
 SCH_BASE_URL = 'https://na01.hub.streamsets.com'
 SCRIPT_TIMEOUT = 300
+TRANSFORMER_DOCKER_PREFIX = 'tf-'
+SDC_DOCKER_PREFIX = 'sdc-'
 
 
 class DeploymentManager:
@@ -114,6 +116,10 @@ class DeploymentManager:
                 update_config.write(configfile)
 
             if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
+                # Retrieve deployment configs
+                engine_properties = javaproperties.loads(
+                    deployment.engine_configuration.advanced_configuration.data_collector_configuration)
+
                 # Fewer stage libs for quick deployment
                 try:
                     with open(SDC_STAGE_LIBS, 'r') as f:
@@ -125,10 +131,6 @@ class DeploymentManager:
                         f"{lib}:{current_engine_version}" for lib in deployment.engine_configuration.stage_libs]
                 except Exception as e:
                     self.logger.log_msg('error', f"Error reading SDC stage libs: {e}")
-
-            # Retrieve deployment configs
-            engine_properties = javaproperties.loads(
-                deployment.engine_configuration.advanced_configuration.data_collector_configuration)
 
             if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                 engine_properties = javaproperties.loads(
@@ -226,18 +228,18 @@ class DeploymentManager:
                         # Run SDC container under Docker 'DOCKER_NETWORK' network
                         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
                             install_script = deployment.install_script().replace("docker run",
-                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h sdc.cluster --name sdc-{engine_version} ")
+                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h sdc.cluster --name {SDC_DOCKER_PREFIX}{engine_version} ")
                         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                             install_script = deployment.install_script().replace("docker run",
-                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h transformer.cluster --name tf-{engine_version} ")
+                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h transformer.cluster --name {TRANSFORMER_DOCKER_PREFIX}{engine_version} ")
                     else:
                         # Run SDC container under Docker 'DOCKER_NETWORK' network + expose some Docker ports listed via DOCKER_PORTS
                         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
                             install_script = deployment.install_script().replace("docker run",
-                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h sdc.cluster --name sdc-{engine_version} {ports_string} ")
+                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h sdc.cluster --name {SDC_DOCKER_PREFIX}{engine_version} {ports_string} ")
                         if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                             install_script = deployment.install_script().replace("docker run",
-                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h transformer.cluster --name tf-{engine_version} {ports_string} ")
+                                                                                 f"docker run --network={self.config.get('DEPLOYMENT', 'DOCKER_NETWORK')} -h transformer.cluster --name {TRANSFORMER_DOCKER_PREFIX}{engine_version} {ports_string} ")
                     try:
                         # Attempt to create the DOCKER_NETWORK
                         subprocess.run(
@@ -263,17 +265,19 @@ class DeploymentManager:
 
             # Handle TARBALL installation
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
-                # create download and install directories
-                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
-                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}", exist_ok=True)
-                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
-                os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}", exist_ok=True)
                 install_script = deployment.install_script(install_mechanism='BACKGROUND')
-                # defaults the download & install location
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
+                    # create download and install directories
+                    os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
+                    os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}", exist_ok=True)
+                    # add download/install path to the installation script
                     install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_SDC} " \
                                      f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_SDC}"
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
+                    # create download and install directories
+                    os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_DOWNLOAD_PATH_SDC}", exist_ok=True)
+                    os.makedirs(f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}", exist_ok=True)
+                    # add download/install path to the installation script
                     install_script = f"{install_script} --no-prompt --download-dir=$HOME/{TARBALL_DOWNLOAD_PATH_TRANSFORMER} " \
                                      f"--install-dir=$HOME/{TARBALL_INSTALLATION_PATH_TRANSFORMER}"
                 try:
@@ -284,12 +288,12 @@ class DeploymentManager:
                     # Log the time for completion
                     self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
                 except subprocess.TimeoutExpired:
-                    self.logger.log_msg('error',"The install script took too long to complete and was terminated.")
+                    self.logger.log_msg('error', "The install script took too long to complete and was terminated.")
                 except subprocess.CalledProcessError as e:
                     self.logger.log_msg('error', f"Engine install failed: {e.stderr}")
 
         except Exception as e:
-            self.logger.log_msg('error', f"An error occurred during deployment creation: {e}")
+            self.logger.log_msg('error', f"An error occurred during deployment creation: {e.stderr}")
 
     def delete_deployment(self):
         try:
@@ -324,29 +328,30 @@ class DeploymentManager:
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                     installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}/streamsets-transformer_{self.config.get("DEPLOYMENT", "SCALA_VERSION")}-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
-                    with open("cleanup_script.sh", "w") as f:
-                        f.write(
-                            f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
-                        f.write(f"kill -9 $pid\n")
-                        f.write(f"rm -rf {installation_dir}\n")
-                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                    installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
                     try:
-                        # get the process id for the engine
                         subprocess.run(f"rm -rf {installation_dir}", check=True, shell=True)
                         self.logger.log_msg('info', "Finished cleanup tasks !!")
                         self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
-                        # Log the time for completion
-                        self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+
+                    except subprocess.CalledProcessError as e:
+                        self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
+
+                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
+                    installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
+                    try:
+                        subprocess.run(f"rm -rf {installation_dir}", check=True, shell=True)
+                        self.logger.log_msg('info', "Finished cleanup tasks !!")
+                        self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+
                     except subprocess.CalledProcessError as e:
                         self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
 
             # DOCKER cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                    cleanup_command = f"docker rm -f tf-{engine_version}\n"
+                    cleanup_command = f"docker rm -f {TRANSFORMER_DOCKER_PREFIX}{engine_version}\n"
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                    cleanup_command = f"docker rm -f sdc-{engine_version}\n"
+                    cleanup_command = f"docker rm -f {SDC_DOCKER_PREFIX}{engine_version}\n"
                 try:
                     subprocess.run(cleanup_command, capture_output=True, text=True, check=True, shell=True)
                     self.logger.log_msg('info', "Finished cleanup tasks !!")
@@ -413,9 +418,11 @@ class DeploymentManager:
 
         # Update external_resource_location
         if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
-            deployment.engine_configuration.external_resource_source = self.config.get("DEPLOYMENT", "EXTERNAL_RESOURCES_PATH_DOCKER")
+            deployment.engine_configuration.external_resource_source = self.config.get("DEPLOYMENT",
+                                                                                       "EXTERNAL_RESOURCES_PATH_DOCKER")
         if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
-            deployment.engine_configuration.external_resource_source = self.config.get("DEPLOYMENT", "EXTERNAL_RESOURCES_PATH_TARBALL")
+            deployment.engine_configuration.external_resource_source = self.config.get("DEPLOYMENT",
+                                                                                       "EXTERNAL_RESOURCES_PATH_TARBALL")
 
         # Update JAVA OPTIONS
         java_config = deployment.engine_configuration.java_configuration
@@ -468,7 +475,6 @@ class DeploymentManager:
 
         except subprocess.CalledProcessError as e:
             self.logger.log_msg('info', f"Engine restart encountered error: {e.stderr} ")
-
 
     def cleanup_deployment_scripts(self):
         cleanup_files = [
@@ -567,7 +573,6 @@ class DeploymentManager:
                 self.logger.log_msg('info', "Goodbye!!")
         else:
             self.logger.log_msg('info', "Goodbye!!")
-
 
 
 if __name__ == "__main__":
