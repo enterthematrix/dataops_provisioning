@@ -328,13 +328,25 @@ class DeploymentManager:
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
                     installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_TRANSFORMER}/streamsets-transformer_{self.config.get("DEPLOYMENT", "SCALA_VERSION")}-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
+                    pid_command = f"ps aux | grep streamsets-transformer-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}"
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
                     installation_dir = f"{INSTALLATION_HOME}/{TARBALL_INSTALLATION_PATH_SDC}/streamsets-datacollector-{self.config.get("DEPLOYMENT", "ENGINE_VERSION")}"
-                with open("cleanup_script.sh", "w") as f:
-                    f.write(
-                        f"pid=`ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}`\n")
-                    f.write(f"kill -9 $pid\n")
-                    f.write(f"rm -rf {installation_dir}\n")
+                    pid_command = f"ps aux | grep streamsets-datacollector-{current_engine_version} | grep DataCollectorMain | awk {{'print $2'}}"
+
+                dir_cleanup_command = f"rm -rf {installation_dir}"
+                try:
+                    # get the process id for the engine
+                    pid = subprocess.run(pid_command, capture_output=True, text=True, check=True, shell=True)
+                    kill_command = f"kill -9 {pid}"
+                    subprocess.run(kill_command, capture_output=True, text=True, check=True, shell=True)
+                    subprocess.run(dir_cleanup_command, capture_output=True, text=True, check=True, shell=True)
+                    self.logger.log_msg('info', "Finished cleanup tasks !!")
+                    self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+                    # Log the time for completion
+                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+                except subprocess.CalledProcessError as e:
+                    self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
+
             # DOCKER cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
                 if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
@@ -349,6 +361,7 @@ class DeploymentManager:
                     self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
                 except subprocess.CalledProcessError as e:
                     self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
+
         except:
             self.logger.log_msg('warning', "No running engine found for this deployment")
 
@@ -456,12 +469,11 @@ class DeploymentManager:
         control_hub = ControlHubManager()
         control_hub.controlHub_login()
         # restart engine after updating the deployment
-        os.system(
-            f'curl -X POST {SCH_BASE_URL}/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false '
-            f'-H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" '
-            f'-H "X-SS-App-Component-Id: {control_hub.cred_id}" '
-            f'-H "X-SS-App-Auth-Token: {control_hub.cred_token}" -i\n'
-        )
+        restart_engine_command = f'curl -X POST {SCH_BASE_URL}/provisioning/rest/v1/csp/deployment/{deployment_id}/restartEngines?isStaleOnly=false -H "Content-Type:application/json" -H "X-Requested-By:curl" -H "X-SS-REST-CALL:true" -H "X-SS-App-Component-Id: {control_hub.cred_id}" -H "X-SS-App-Auth-Token: {control_hub.cred_token}" -i'
+        try:
+            subprocess.run(restart_engine_command, capture_output=True, text=True, check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.log_msg('info', f"Engine restart encountered error: {e.stderr} ")
         self.logger.log_msg('info', "Environment/Deployment updated successfully.")
         # Log the time for completion
         self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
