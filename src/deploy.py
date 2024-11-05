@@ -254,21 +254,16 @@ class DeploymentManager:
                             # For any other error, re-raise the exception
                             raise
                     try:
-                        subprocess.run(install_script, capture_output=True, text=True, shell=True)
+                        # run docker run command for the engine
+                        self.logger.log_msg('info', f"Running the command: {install_script}")
+                        subprocess.run(install_script, check=True, capture_output=True, text=True, shell=True)
                         self.logger.log_msg('info', "Deployment completed successfully.")
-                        # self.logger.log_msg('info', "Deleting deployment scripts")
-                        # self.cleanup_deployment_scripts()
                         # Log the time for completion
                         self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
                     except subprocess.CalledProcessError as e:
                         self.logger.log_msg('error', f"Engine set-up encountered error: {e.stderr}")
-                    # with open("install_script.sh", "w") as f:
-                    #     f.write(install_script)
-                    # os.chmod("install_script.sh", stat.S_IRWXU)
-                    # os.system("sh install_script.sh")
                 except Exception as e:
                     self.logger.log_msg('error', f"Engine install failed: {e}")
-
 
             # Handle TARBALL installation
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "TARBALL":
@@ -297,7 +292,6 @@ class DeploymentManager:
                 # self.cleanup_deployment_scripts()
                 # Log the time for completion
                 self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
-
         except Exception as e:
             self.logger.log_msg('error', f"An error occurred during deployment creation: {e}")
 
@@ -343,28 +337,18 @@ class DeploymentManager:
                     f.write(f"rm -rf {installation_dir}\n")
             # DOCKER cleanup
             if self.config.get("DEPLOYMENT", "INSTALL_TYPE") == "DOCKER":
-                with open("cleanup_script.sh", "w") as f:
-                    if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
-                        # f.write(f"docker rm -f tf-{engine_version}\n")
-                        cleanup_command = f"docker rm -f tf-{engine_version}\n"
-                    if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
-                        # f.write(f"docker rm -f sdc-{engine_version}\n")
-                        cleanup_command = f"docker rm -f sdc-{engine_version}\n"
-
-                    # f.write('echo "Finished cleanup tasks"\n')
-            # os.chmod("cleanup_script.sh", stat.S_IRWXU)
-            # os.system("sh cleanup_script.sh")
-            try:
-                subprocess.run([cleanup_command], capture_output=True, text=True, check=True)
-                self.logger.log_msg('info', "Finished cleanup tasks !!")
-                self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
-                self.logger.log_msg('info', "Deleting deployment scripts")
-                self.cleanup_deployment_scripts()
-                # Log the time for completion
-                self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
-            except subprocess.CalledProcessError as e:
-                self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
-
+                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'TF':
+                    cleanup_command = f"docker rm -f tf-{engine_version}\n"
+                if self.config.get("DEPLOYMENT", "ENGINE_TYPE") == 'DC':
+                    cleanup_command = f"docker rm -f sdc-{engine_version}\n"
+                try:
+                    subprocess.run(cleanup_command, capture_output=True, text=True, check=True, shell=True)
+                    self.logger.log_msg('info', "Finished cleanup tasks !!")
+                    self.logger.log_msg('info', "Environment/Deployment deleted successfully.")
+                    # Log the time for completion
+                    self.logger.log_msg('info', f"Time for completion: {time.time() - self.start_time:.2f} secs")
+                except subprocess.CalledProcessError as e:
+                    self.logger.log_msg('info', f"Engine clean-up encountered error: {e.stderr} ")
         except:
             self.logger.log_msg('warning', "No running engine found for this deployment")
 
