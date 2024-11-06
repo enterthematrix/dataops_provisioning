@@ -37,7 +37,7 @@ class ControlHubManager:
                     # Check if credentials were loaded successfully
                     if not self.cred_id or not self.cred_token:
                         raise ValueError(
-                            "Missing credentials. Ensure both CRED_ID_CS and CRED_TOKEN_CS are set in environment variables."
+                            "Missing credentials. Ensure both CRED_ID_<ORG> and CRED_TOKEN_<ORG> are set in environment variables."
                         )
 
                 except ValueError as e:
