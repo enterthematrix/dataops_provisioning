@@ -5,7 +5,7 @@
 ```commandline
 pip3 install -r requirements.txt
 ```
-2. Create the following configuration files:
+2. Create the following configuration files under 'private' directory:
 
 credentials.properties:
 ```
