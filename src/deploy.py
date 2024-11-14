@@ -254,6 +254,7 @@ class DeploymentManager:
                             raise
                     try:
                         # run docker run command for the engine
+                        self.logger.log_msg('info', f"Docker Command: {install_script}")
                         subprocess.run(install_script, check=True, capture_output=True, text=True, shell=True)
                         self.logger.log_msg('info', "Deployment completed successfully.")
                         # Log the time for completion
